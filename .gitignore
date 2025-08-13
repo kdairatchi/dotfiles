@@ -1,0 +1,105 @@
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor Files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+*.out
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Sensitive Data
+.env
+.tokens
+*.key
+*.pem
+*_rsa
+*_rsa.pub
+config.json
+secrets/
+credentials/
+
+# Results and Output
+results/
+output/
+scan_results/
+*_results/
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go
+vendor/
+
+# Tool-specific ignores
+.nuclei/
+.httpx/
+.subfinder/
+.katana/
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# API Keys and Tokens (extra safety)
+*api_key*
+*token*
+*secret*
+*password*
+
+# Local configuration
+local_config.sh
+.local/

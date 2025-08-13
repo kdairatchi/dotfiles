@@ -1,0 +1,246 @@
+# ---------------------------------------------
+# Powerlevel10k Instant Prompt (keep at top)
+# ---------------------------------------------
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# ---------------------------------------------
+# Oh-My-Zsh & Theme
+# ---------------------------------------------
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+plugins=(
+  git
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  zsh-completions
+)
+
+source $ZSH/oh-my-zsh.sh
+
+# ---------------------------------------------
+# Aliases
+# ---------------------------------------------
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# ----------------------------
+# Bug Bounty Tool Aliases 💣
+# ----------------------------
+
+# Tools
+alias blackwidow="$HOME/tools/BlackWidow/blackwidow"
+alias corsy="python3 $HOME/tools/Corsy/corsy.py"
+alias eyewitness="python3 $HOME/tools/EyeWitness/Python/EyeWitness.py"
+alias gobuster="$HOME/tools/gobuster/gobuster"
+alias gitdorker="python3 $HOME/tools/GitDorker/GitDorker.py"
+alias gsec="python3 $HOME/tools/Gsec/gsec.py"
+alias jsfinder="python3 $HOME/tools/JSFinder/jsfinder.py"
+alias loxs="python3 $HOME/tools/loxs/loxs.py"
+alias sniper="sudo $HOME/tools/Sn1per/sniper"
+alias spiderfoot="python3 $HOME/tools/spiderfoot/sf.py"
+alias ufx="python3 $HOME/tools/UFX/ufx.py"
+alias xsstrike="python3 $HOME/tools/XSStrike/xsstrike.py"
+alias lazyxss="python3 $HOME/tools/Lazyxss/main.py"
+alias random="python3 $HOME/scripts/bounty_randomizer.py"
+alias jsscan="$HOME/tools/JSFScan.sh"
+alias username="linkook"
+alias domsink="python3 $HOME/gov/domsink_scanner.py"
+alias domsinkscan="python3 $HOME/gov/enhanced_domsink_scanner.py"
+
+# ----------------------------
+# Personal Scripts ⚙️
+# ----------------------------
+
+# Recon
+alias recon="$HOME/scripts/recon.sh"
+alias wayback="$HOME/scripts/wayback.sh"
+alias waybackmaster="$HOME/scripts/waybackmaster"
+alias ultibb="$HOME/scripts/ultibb.sh"
+alias luckyspin="$HOME/scripts/luckyspin.sh"
+alias luckysin="$HOME/scripts/luckysin2.sh"
+alias bughunt="$HOME/scripts/bug.sh"
+alias bentleyscan="$HOME/scripts/bentley.swagger.sh"
+alias swagger="$HOME/scripts/swagger.sh"
+alias jsrecon="$HOME/scripts/js_recon.sh"
+alias dorking="python3 $HOME/scripts/dorking.py"
+alias waybackfind="python3 $HOME/WayBackupFinder/wayBackupFinder.py"
+
+# Util & Setup
+alias javafxenv="$HOME/scripts/java-install.sh"
+alias securecomms="$HOME/scripts/secure_comms.sh"
+alias pcupdater="$HOME/scripts/pcupdater"
+alias alien="$HOME/scripts/alienvault.sh"
+alias trafficlog="python3 $HOME/scripts/traffic_analysis.py"
+alias puny="python3 $HOME/scripts/punycode_gen.py"
+alias vt="$HOME/scripts/vt.sh"
+alias nucleih="$HOME/scripts/nuclei_debug_helper.sh"
+alias menu="$HOME/scripts/bug_bounty_menu.sh"
+
+# Fuzz & SQL
+alias sqli="$HOME/scripts/sqli_test.sh"
+alias fuzz="$HOME/scripts/kfuzzer.sh"
+alias rustscan="$HOME/tools/RustScan/target/release/rustscan"
+
+# ---------------------------------------------
+# Dev Language Paths
+# ---------------------------------------------
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="/usr/local/go/bin:$PATH"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+
+# ---------------------------------------------
+# Node Version Manager (NVM)
+# ---------------------------------------------
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# ---------------------------------------------
+# Java & JavaFX Setup
+# ---------------------------------------------
+export JAVA_HOME="$HOME/.temurin"
+export PATH="$JAVA_HOME/bin:$PATH"
+export JAVAFX_HOME="/opt/javafx-sdk"
+export PATH="$JAVAFX_HOME/bin:$PATH"
+
+# ---------------------------------------------
+# Extra Tools
+# ---------------------------------------------
+alias claude="$HOME/.local/bin/claude"
+export PATH="$HOME/tools/urldedupe:$PATH"
+export PATH="$HOME/tools/loxs:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+
+for tool in "$HOME/tools"/*; do
+  [ -d "$tool/bin" ] && export PATH="$tool/bin:$PATH"
+done
+
+for scripts in "$HOME/scripts"/*; do
+  [ -d "$scripts/bin" ] && export PATH="$scripts/bin:$PATH"
+done
+
+# ---------------------------------------------
+# Completion Setup
+# ---------------------------------------------
+autoload -U compinit && compinit
+
+# ---------------------------------------------
+# Powerlevel10k Prompt Config
+# ---------------------------------------------
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+export PATH="$PATH:/home/kali/.local/bin"
+
+# Golang environment variables
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$GOROOT/bin:$HOME/.local/bin:$PATH
+
+# API Keys (set these in your environment or .env file)
+# export GEMINI_API_KEY="your_api_key_here"
+
+# HTML to text converter
+htmltxt() { curl -s "$1" | lynx -dump -stdin }
+
+# Validate all YAMLs in current dir
+oty-validate-all() {
+    parallel -j4 'echo "==> {}"; oty validate "{}"' ::: *.yaml
+}
+
+# Run Nuclei in parallel on a file of URLs
+nuclei-par() {
+    local urls_file="$1"
+    [[ -z "$urls_file" ]] && { echo "Usage: nuclei-par urls.txt"; return 1; }
+    parallel -j10 'nuclei -u {} -t /home/kali/nuclei-templates/customs -o "{}.nuclei.txt"' :::: "$urls_file"
+}
+
+# Parallel HTTPX probing (status, title, tech)
+httpx-par() {
+    local urls_file="$1"
+    [[ -z "$urls_file" ]] && { echo "Usage: httpx-par urls.txt"; return 1; }
+    parallel -j50 'echo {} | httpx -title -status-code -tech-detect' :::: "$urls_file"
+}
+
+# Parallel Wayback URLs fetch
+wayback-par() {
+    local domains_file="$1"
+    [[ -z "$domains_file" ]] && { echo "Usage: wayback-par domains.txt"; return 1; }
+    parallel -j10 "echo {} && waybackurls {} > '{}.wayback.txt'" :::: "$domains_file"
+}
+
+# Parallel GF pattern matching
+gf-par() {
+    local pattern="$1"
+    local urls_file="$2"
+    [[ -z "$pattern" || -z "$urls_file" ]] && { echo "Usage: gf-par pattern urls.txt"; return 1; }
+    parallel -j4 "gf '$pattern' < {} > '{}.${pattern}.txt'" :::: "$urls_file"
+}
+
+# Parallel JSFinder
+jsfinder-par() {
+    local urls_file="$1"
+    [[ -z "$urls_file" ]] && { echo "Usage: jsfinder-par urls.txt"; return 1; }
+    parallel -j5 'python3 /home/kali/tools/JSFinder/jsfinder.py -u {} -d' :::: "$urls_file"
+}
+
+# Parallel RustScan
+rustscan-par() {
+    local targets_file="$1"
+    [[ -z "$targets_file" ]] && { echo "Usage: rustscan-par targets.txt"; return 1; }
+    parallel -j4 "/home/kali/tools/RustScan/target/release/rustscan -a {} -r 1-65535" :::: "$targets_file"
+}
+
+# Parallel XSStrike
+xsstrike-par() {
+    local urls_file="$1"
+    [[ -z "$urls_file" ]] && { echo "Usage: xsstrike-par urls.txt"; return 1; }
+    parallel -j5 'python3 /home/kali/tools/XSStrike/xsstrike.py -u {} --crawl' :::: "$urls_file"
+}
+
+smartgrab() {
+  local url="$1"
+  # Try JSON parse first; if jq fails, dump as text
+  if curl -sL --compressed "$url" | jq . >/dev/null 2>&1; then
+    curl -sL --compressed "$url" | jq .
+  else
+    curl -sL --compressed -A 'Mozilla/5.0' "$url" | lynx -dump -stdin
+  fi
+}
+
+linksabs() {
+  local url="$1"
+  if command -v htmlq >/dev/null 2>&1; then
+    curl -sL --compressed -A 'Mozilla/5.0' "$url" \
+    | htmlq -a href a \
+    | python3 -c 'import sys, urllib.parse as U, html
+base=sys.argv[1]; seen=set()
+for line in sys.stdin:
+    href=html.unescape(line.strip())
+    if not href: 
+        continue
+    abs=U.urljoin(base, href)
+    if abs.startswith(("http://","https://")) and abs not in seen:
+        seen.add(abs); print(abs)' "$url"
+  else
+    curl -sL --compressed -A 'Mozilla/5.0' "$url" \
+    | grep -oE 'href=["'"'"'"][^"'"'"' >]+' \
+    | sed -E 's/^href=["'"'"'"]//' \
+    | python3 -c 'import sys, urllib.parse as U, html
+base=sys.argv[1]; seen=set()
+for line in sys.stdin:
+    href=html.unescape(line.strip())
+    if not href: 
+        continue
+    abs=U.urljoin(base, href)
+    if abs.startswith(("http://","https://")) and abs not in seen:
+        seen.add(abs); print(abs)' "$url"
+  fi
+}
