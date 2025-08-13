@@ -1,0 +1,2 @@
+[2025-08-13 01:09:01] [INFO] Fetching URLs from AlienVault OTX for domain: example.com
+[2025-08-13 01:09:01] [INFO] [DRY RUN] Would fetch: https://otx.alienvault.com/api/v1/indicators/hostname/example.com/url_list?limit=500&page=1
