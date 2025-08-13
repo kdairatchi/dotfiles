@@ -140,6 +140,10 @@ alias l='ls -CF'
 # ~/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
+# Load shared settings and aliases if present
+[ -f "$HOME/.shell_common" ] && . "$HOME/.shell_common"
+
+# Load user-specific aliases last
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
@@ -154,8 +158,19 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-. "$HOME/.cargo/env"
-export PATH=$PATH:$HOME/go/bin
-export PATH=$PATH:$HOME/bug_bounty_framework
-export PATH=$PATH:$HOME/go/bin
-export PATH=$PATH:$HOME/bug_bounty_framework
+
+# Language/toolchain paths (deduplicated)
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+export GOPATH="${GOPATH:-$HOME/go}"
+case ":$PATH:" in
+  *:"$HOME/go/bin":*) ;;
+  *) export PATH="$PATH:$HOME/go/bin" ;;
+esac
+
+# Optional project-specific additions
+for extra in "$HOME/bug_bounty_framework"; do
+  case ":$PATH:" in
+    *:"$extra":*) ;;
+    *) [ -d "$extra" ] && export PATH="$PATH:$extra" ;;
+  esac
+done

@@ -167,7 +167,6 @@ check_python_deps() {
         local deps=(
             "aiofiles"
             "aiohttp"
-            "crawl4ai"
             "dnspython"
             "python-whois"
             "requests"

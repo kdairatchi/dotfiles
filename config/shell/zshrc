@@ -20,6 +20,9 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
+# Load shared settings and aliases
+[ -f "$HOME/.shell_common" ] && source "$HOME/.shell_common"
+
 # ---------------------------------------------
 # Aliases
 # ---------------------------------------------
@@ -29,29 +32,8 @@ alias l='ls -CF'
 alias ..='cd ..'
 alias ...='cd ../..'
 
-# ----------------------------
-# Bug Bounty Tool Aliases 💣
-# ----------------------------
-
-# Tools
-alias blackwidow="$HOME/tools/BlackWidow/blackwidow"
-alias corsy="python3 $HOME/tools/Corsy/corsy.py"
-alias eyewitness="python3 $HOME/tools/EyeWitness/Python/EyeWitness.py"
-alias gobuster="$HOME/tools/gobuster/gobuster"
-alias gitdorker="python3 $HOME/tools/GitDorker/GitDorker.py"
-alias gsec="python3 $HOME/tools/Gsec/gsec.py"
-alias jsfinder="python3 $HOME/tools/JSFinder/jsfinder.py"
-alias loxs="python3 $HOME/tools/loxs/loxs.py"
-alias sniper="sudo $HOME/tools/Sn1per/sniper"
-alias spiderfoot="python3 $HOME/tools/spiderfoot/sf.py"
-alias ufx="python3 $HOME/tools/UFX/ufx.py"
-alias xsstrike="python3 $HOME/tools/XSStrike/xsstrike.py"
-alias lazyxss="python3 $HOME/tools/Lazyxss/main.py"
-alias random="python3 $HOME/scripts/bounty_randomizer.py"
-alias jsscan="$HOME/tools/JSFScan.sh"
+# Personal alias
 alias username="linkook"
-alias domsink="python3 $HOME/gov/domsink_scanner.py"
-alias domsinkscan="python3 $HOME/gov/enhanced_domsink_scanner.py"
 
 # ----------------------------
 # Personal Scripts ⚙️
@@ -88,13 +70,15 @@ alias fuzz="$HOME/scripts/kfuzzer.sh"
 alias rustscan="$HOME/tools/RustScan/target/release/rustscan"
 
 # ---------------------------------------------
-# Dev Language Paths
+# Dev Language Paths (shared via ~/.shell_common when present)
 # ---------------------------------------------
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="/usr/local/go/bin:$PATH"
-export GOPATH="$HOME/go"
-export PATH="$GOPATH/bin:$PATH"
+[ -f "$HOME/.shell_common" ] || {
+  export PATH="$HOME/.local/bin:$PATH"
+  export PATH="$HOME/.cargo/bin:$PATH"
+  export PATH="/usr/local/go/bin:$PATH"
+  export GOPATH="$HOME/go"
+  export PATH="$GOPATH/bin:$PATH"
+}
 
 # ---------------------------------------------
 # Node Version Manager (NVM)
@@ -114,7 +98,6 @@ export PATH="$JAVAFX_HOME/bin:$PATH"
 # ---------------------------------------------
 # Extra Tools
 # ---------------------------------------------
-alias claude="$HOME/.local/bin/claude"
 export PATH="$HOME/tools/urldedupe:$PATH"
 export PATH="$HOME/tools/loxs:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
@@ -137,15 +120,7 @@ autoload -U compinit && compinit
 # ---------------------------------------------
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-export PATH="$PATH:/home/kali/.local/bin"
-
-# Golang environment variables
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/go
-export PATH=$GOPATH/bin:$GOROOT/bin:$HOME/.local/bin:$PATH
-
-# API Keys (set these in your environment or .env file)
-# export GEMINI_API_KEY="your_api_key_here"
+# API keys should be set via environment or a secure secrets manager.
 
 # HTML to text converter
 htmltxt() { curl -s "$1" | lynx -dump -stdin }

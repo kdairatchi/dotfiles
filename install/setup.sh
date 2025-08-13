@@ -112,13 +112,17 @@ link_configs() {
     log "Linking configuration files..."
     
     # Backup existing configs
+    [ -f "$HOME/.bashrc" ] && cp "$HOME/.bashrc" "$HOME/.bashrc.backup.$(date +%Y%m%d)"
     [ -f "$HOME/.zshrc" ] && cp "$HOME/.zshrc" "$HOME/.zshrc.backup.$(date +%Y%m%d)"
     [ -f "$HOME/.gitconfig" ] && cp "$HOME/.gitconfig" "$HOME/.gitconfig.backup.$(date +%Y%m%d)"
+    [ -f "$HOME/.p10k.zsh" ] && cp "$HOME/.p10k.zsh" "$HOME/.p10k.zsh.backup.$(date +%Y%m%d)"
     
     # Link new configs
+    ln -sf "$(pwd)/config/shell/bashrc" "$HOME/.bashrc"
     ln -sf "$(pwd)/config/shell/zshrc" "$HOME/.zshrc"
     ln -sf "$(pwd)/config/shell/p10k.zsh" "$HOME/.p10k.zsh"
     ln -sf "$(pwd)/config/git/gitconfig" "$HOME/.gitconfig"
+    ln -sf "$(pwd)/config/shell/common.sh" "$HOME/.shell_common"
     
     warn "Remember to update your git config with your actual email and name!"
 }
