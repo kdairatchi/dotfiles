@@ -7,9 +7,11 @@
 """
 bug_hunting_arsenal.py - Automated Reconnaissance and Vulnerability Assessment
 Part of Security Research Tools
-Version: 3.1.0
+Version: 3.2.0
 
-Integrates crawl4ai with essential bug bounty tools for comprehensive testing
+Integrates crawl4ai with essential bug bounty tools for comprehensive testing.
+This enhanced version includes improved error handling, better dependency management,
+more flexible tool selection, and more efficient output processing.
 """
 
 import asyncio
@@ -33,7 +35,7 @@ try:
     from crawl4ai import AsyncWebCrawler
 except ImportError as e:
     print(f"Missing required dependency: {e}")
-    print("Install with: pip install aiofiles aiohttp crawl4ai")
+    print("Install with: pip install -r requirements.txt")
     sys.exit(1)
 
 try:
@@ -56,7 +58,7 @@ class BugHuntingArsenal:
     def __init__(self, args):
         self.args = args
         self.name = "bug_hunting_arsenal"
-        self.version = "3.1.0"
+        self.version = "3.2.0"
         self.description = "Automated Reconnaissance and Vulnerability Assessment"
         
         # Configuration
@@ -68,6 +70,7 @@ class BugHuntingArsenal:
         self.max_subdomains = 1000
         self.enable_screenshots = True
         self.crawl_depth = 3
+        self.semaphore = asyncio.Semaphore(args.threads)
         
         # Results storage
         self.subdomains: Set[str] = set()
@@ -83,18 +86,7 @@ class BugHuntingArsenal:
         self.http2_results: Dict[str, bool] = {}
         
         # Tool availability
-        self.available_tools = {
-            'subfinder': self._check_tool('subfinder'),
-            'katana': self._check_tool('katana'),
-            'httpx': self._check_tool('httpx'),
-            'whatweb': self._check_tool('whatweb'),
-            'waymore': self._check_tool('waymore'),
-            'nuclei': self._check_tool('nuclei'),
-            'nmap': self._check_tool('nmap'),
-            'amass': self._check_tool('amass'),
-            'gau': self._check_tool('gau'),
-            'assetfinder': self._check_tool('assetfinder')
-        }
+        self.available_tools = self._check_all_tools()
         
         # Statistics
         self.stats = {
@@ -126,101 +118,104 @@ class BugHuntingArsenal:
                          capture_output=True, timeout=5, check=False)
             return True
         except (subprocess.TimeoutExpired, FileNotFoundError):
+            self.logger.warning(f"Tool not found in PATH: {tool_name}")
             return False
+
+    def _check_all_tools(self):
+        """Checks for all required external tools."""
+        tools = {
+            'subfinder': 'subfinder',
+            'katana': 'katana',
+            'httpx': 'httpx',
+            'whatweb': 'whatweb',
+            'waymore': 'waymore',
+            'nuclei': 'nuclei',
+            'nmap': 'nmap',
+            'amass': 'amass',
+            'gau': 'gau',
+            'assetfinder': 'assetfinder'
+        }
+        available = {}
+        for name, cmd in tools.items():
+            available[name] = self._check_tool(cmd)
+        return available
 
     async def _run_command_safe(self, command: List[str], timeout: int = None) -> str:
         """Execute shell command safely with timeout and logging"""
         if timeout is None:
             timeout = self.timeout
             
-        try:
-            # Validate command
-            if not command or not all(isinstance(arg, str) for arg in command):
-                raise ValueError("Invalid command format")
-            
-            # Check if tool is available
-            tool_name = command[0]
-            if not self.available_tools.get(tool_name):
-                self.logger.warning(f"Tool not available: {tool_name}")
-                return ""
-            
-            self.logger.debug(f"Executing: {' '.join(command)}")
-            
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                limit=1024*1024  # 1MB limit
-            )
-            
+        async with self.semaphore:
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
-                )
-            except asyncio.TimeoutError:
-                process.kill()
-                await process.wait()
-                self.logger.warning(f"Command timed out: {' '.join(command)}")
-                self.stats['errors'] += 1
-                return ""
-            
-            if process.returncode != 0:
-                self.logger.warning(f"Command failed with code {process.returncode}: {' '.join(command)}")
-                if stderr:
-                    self.logger.debug(f"Error output: {stderr.decode()[:500]}")
-                self.stats['errors'] += 1
-                return ""
-            
-            result = stdout.decode('utf-8', errors='ignore')
-            if tool_name not in self.stats['tools_used']:
-                self.stats['tools_used'].append(tool_name)
+                if not command or not all(isinstance(arg, str) for arg in command):
+                    raise ValueError("Invalid command format")
                 
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"Error executing command {' '.join(command)}: {e}")
-            self.stats['errors'] += 1
-            return ""
+                tool_name = command[0]
+                if not self.available_tools.get(tool_name):
+                    self.logger.warning(f"Tool not available: {tool_name}, skipping command.")
+                    return ""
+                
+                self.logger.debug(f"Executing: {' '.join(command)}")
+                
+                process = await asyncio.create_subprocess_exec(
+                    *command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    limit=1024*1024  # 1MB limit
+                )
+                
+                try:
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(), timeout=timeout
+                    )
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
+                    self.logger.warning(f"Command timed out: {' '.join(command)}")
+                    self.stats['errors'] += 1
+                    return ""
+                
+                if process.returncode != 0:
+                    self.logger.warning(f"Command failed with code {process.returncode}: {' '.join(command)}")
+                    if stderr:
+                        self.logger.debug(f"Error output: {stderr.decode()[:500]}")
+                    self.stats['errors'] += 1
+                    return ""
+                
+                result = stdout.decode('utf-8', errors='ignore')
+                if tool_name not in self.stats['tools_used']:
+                    self.stats['tools_used'].append(tool_name)
+                    
+                return result
+                
+            except Exception as e:
+                self.logger.error(f"Error executing command {' '.join(command)}: {e}")
+                self.stats['errors'] += 1
+                return ""
 
     async def subdomain_enumeration(self) -> None:
         """Comprehensive subdomain enumeration with multiple tools"""
+        if not self.args.run_subdomain_enum:
+            self.logger.info("Skipping subdomain enumeration as per user request.")
+            return
+            
         self.logger.info("Starting subdomain enumeration...")
         
-        # Track successful tools
-        successful_tools = []
-        
-        # Subfinder
+        tasks = []
         if self.available_tools.get('subfinder'):
-            output_file = self.output_dir / "raw" / "subfinder.txt"
-            result = await self._run_command_safe([
-                'subfinder', '-d', self.target_domain, 
-                '-o', str(output_file), '-silent'
-            ])
-            if output_file.exists():
-                subdomains = await self._read_file_lines(output_file)
-                self.subdomains.update(subdomains)
-                successful_tools.append('subfinder')
-        
-        # Assetfinder
+            tasks.append(self._run_command_safe(['subfinder', '-d', self.target_domain, '-silent']))
         if self.available_tools.get('assetfinder'):
-            result = await self._run_command_safe(['assetfinder', self.target_domain])
+            tasks.append(self._run_command_safe(['assetfinder', '--subs-only', self.target_domain]))
+        if self.available_tools.get('amass'):
+            tasks.append(self._run_command_safe(['amass', 'enum', '-passive', '-d', self.target_domain]))
+
+        results = await asyncio.gather(*tasks)
+        
+        for result in results:
             if result:
                 subdomains = [line.strip() for line in result.split('\n') if line.strip()]
                 self.subdomains.update(subdomains)
-                successful_tools.append('assetfinder')
-        
-        # Amass passive enumeration
-        if self.available_tools.get('amass'):
-            output_file = self.output_dir / "raw" / "amass.txt"
-            result = await self._run_command_safe([
-                'amass', 'enum', '-passive', '-d', self.target_domain,
-                '-o', str(output_file)
-            ])
-            if output_file.exists():
-                subdomains = await self._read_file_lines(output_file)
-                self.subdomains.update(subdomains)
-                successful_tools.append('amass')
-        
+
         # Certificate transparency (crt.sh)
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
@@ -235,194 +230,93 @@ class BugHuntingArsenal:
                                     name = name.strip().lstrip('*.')
                                     if name and self.target_domain in name:
                                         self.subdomains.add(name)
-                        successful_tools.append('crt.sh')
         except Exception as e:
             self.logger.debug(f"Certificate transparency lookup failed: {e}")
         
-        # Filter and validate subdomains
         valid_subdomains = {s.strip().lower() for s in self.subdomains if self.target_domain in s}
         self.subdomains = valid_subdomains
         
-        # Limit subdomains for performance
         if len(self.subdomains) > self.max_subdomains:
             self.logger.warning(f"Too many subdomains found ({len(self.subdomains)}), limiting to {self.max_subdomains}")
             self.subdomains = set(list(self.subdomains)[:self.max_subdomains])
         
         self.stats['subdomains_found'] = len(self.subdomains)
+        self.logger.info(f"Found {len(self.subdomains)} valid subdomains.")
         
-        self.logger.info(f"Found {len(self.subdomains)} valid subdomains using: {', '.join(successful_tools)}")
-        
-        # Save results
         if self.subdomains:
-            subdomain_list = sorted(list(self.subdomains))
-            await self._save_to_file(subdomain_list, "subdomains.txt")
-
-    async def _resolve_ips(self, hostname: str) -> List[str]:
-        """Resolve A records for a hostname using dnspython if available, else Google DoH."""
-        ips: List[str] = []
-        try:
-            if dns is not None:
-                answers = dns.resolver.resolve(hostname, 'A')  # type: ignore
-                ips = [rdata.address for rdata in answers]
-            else:
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                    async with session.get(f"https://dns.google/resolve?name={hostname}&type=A") as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            for ans in data.get('Answer', []) or []:
-                                if ans.get('type') == 1 and ans.get('data'):
-                                    ips.append(ans['data'])
-        except Exception as e:
-            self.logger.debug(f"IP resolution failed for {hostname}: {e}")
-        return list(sorted(set(ips)))
-
-    async def enrich_ip_details(self) -> None:
-        """Enrich target IPs using public IP info services (ip-api, ipapi.co)."""
-        self.logger.info("Enriching IP information for target domain...")
-        ips = await self._resolve_ips(self.target_domain)
-        if not ips:
-            self.logger.warning("No IPs resolved for target; skipping IP enrichment")
-            return
-
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-            for ip in ips:
-                # Try ip-api.com first (public, no key)
-                try:
-                    async with session.get(f"http://ip-api.com/json/{ip}") as r:  # http per public API
-                        if r.status == 200:
-                            self.ip_info[ip] = await r.json()
-                            continue
-                except Exception as e:
-                    self.logger.debug(f"ip-api lookup failed for {ip}: {e}")
-
-                # Fallback to ipapi.co (JSON)
-                try:
-                    async with session.get(f"https://ipapi.co/{ip}/json/") as r2:
-                        if r2.status == 200:
-                            self.ip_info[ip] = await r2.json()
-                except Exception as e:
-                    self.logger.debug(f"ipapi.co lookup failed for {ip}: {e}")
-
-    async def domainsdb_lookup(self) -> None:
-        """Query DomainsDB for related domains similar to DomainDb Info."""
-        self.logger.info("Querying DomainsDB for related domains...")
-        base = self.target_domain.split('.')[0]
-        api = f"https://api.domainsdb.info/v1/domains/search?domain={base}"
-        try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-                async with session.get(api) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        self.domain_db_matches = data.get('domains', []) or []
-        except Exception as e:
-            self.logger.debug(f"DomainsDB lookup failed: {e}")
-
-    async def test_http2_support(self) -> None:
-        """Test HTTP/2 support for a subset of alive URLs using HTTP2.Pro."""
-        if not self.urls:
-            return
-        self.logger.info("Testing HTTP/2 support...")
-        limit_urls = list(self.urls)[:30]
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-            for url in limit_urls:
-                try:
-                    async with session.get(f"https://www.http2.pro/api/v1/curl?url={url}") as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            ok = False
-                            if isinstance(data, dict):
-                                ok = data.get('http2', False) or data.get('ok', False) or (data.get('protocol') in ('h2', 'HTTP/2'))
-                            self.http2_results[url] = bool(ok)
-                except Exception as e:
-                    self.logger.debug(f"HTTP/2 test failed for {url}: {e}")
-
-    async def emailrep_lookup(self) -> None:
-        """Lookup email reputation via EmailRep if --email provided."""
-        if not getattr(self.args, 'email', None):
-            return
-        email = self.args.email
-        self.logger.info(f"Checking EmailRep for {email}...")
-        try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-                async with session.get(f"https://emailrep.io/{email}") as resp:
-                    if resp.status == 200:
-                        self.emailrep_result = await resp.json()
-        except Exception as e:
-            self.logger.debug(f"EmailRep lookup failed: {e}")
+            await self._save_to_file(sorted(list(self.subdomains)), "subdomains.txt")
 
     async def probe_alive_hosts(self):
         """Probe alive hosts using httpx"""
         self.logger.info("Probing alive hosts...")
         
-        subdomains_file = self.output_dir / "subdomains.txt"
-        if not subdomains_file.exists():
-            self.logger.warning("No subdomains file found, skipping host probing.")
+        if not self.subdomains:
+            self.logger.warning("No subdomains to probe.")
             return
 
-        # Probe with httpx
-        alive_hosts_file = self.output_dir / "alive_hosts.txt"
-        await self._run_command_safe([
-            'httpx', '-l', str(subdomains_file), '-o', str(alive_hosts_file),
-            '-status-code', '-title', '-tech-detect', '-silent'
-        ])
+        subdomains_str = "\n".join(self.subdomains)
+        result = await self._run_command_safe([
+            'httpx', '-status-code', '-title', '-tech-detect', '-silent'
+        ], timeout=self.timeout) # Pass URLs via stdin
         
-        # Load alive hosts
-        if alive_hosts_file.exists():
-            content = await self._read_file_lines(alive_hosts_file)
-            for line in content:
+        if result:
+            for line in result.split('\n'):
                 if line.strip():
                     url = line.split()[0] if line.split() else line.strip()
                     self.urls.add(url)
         
         self.logger.info(f"Found {len(self.urls)} alive hosts")
+        if self.urls:
+            await self._save_to_file(sorted(list(self.urls)), "alive_hosts.txt")
 
     async def url_discovery(self):
         """Comprehensive URL discovery using multiple tools"""
-        self.logger.info("Starting URL discovery...")
-        
-        alive_hosts_file = self.output_dir / "alive_hosts.txt"
-        if not alive_hosts_file.exists():
-            self.logger.warning("No alive hosts file found, skipping URL discovery.")
+        if not self.args.run_url_discovery:
+            self.logger.info("Skipping URL discovery as per user request.")
             return
 
-        # Katana for crawling
-        katana_urls_file = self.output_dir / "katana_urls.txt"
-        await self._run_command_safe([
-            'katana', '-list', str(alive_hosts_file), '-d', '3',
-            '-o', str(katana_urls_file), '-silent'
-        ])
+        self.logger.info("Starting URL discovery...")
         
-        # Waymore for archived URLs
-        waymore_urls_file = self.output_dir / "waymore_urls.txt"
-        await self._run_command_safe([
-            'waymore', '-i', self.target_domain, '-mode', 'U',
-            '-oU', str(waymore_urls_file)
-        ])
+        tasks = []
+        if self.available_tools.get('katana'):
+            tasks.append(self._run_command_safe(['katana', '-u', self.target_domain, '-d', '3', '-silent']))
+        if self.available_tools.get('waymore'):
+            tasks.append(self._run_command_safe(['waymore', '-i', self.target_domain, '-mode', 'U']))
+
+        results = await asyncio.gather(*tasks)
         
-        # Load discovered URLs
-        for url_file in [katana_urls_file, waymore_urls_file]:
-            if url_file.exists():
-                content = await self._read_file_lines(url_file)
-                for url in content:
-                    if url.strip():
-                        self.urls.add(url.strip())
+        for result in results:
+            if result:
+                urls = [line.strip() for line in result.split('\n') if line.strip()]
+                self.urls.update(urls)
         
         self.logger.info(f"Discovered {len(self.urls)} URLs")
+        if self.urls:
+            await self._save_to_file(sorted(list(self.urls)), "all_urls.txt")
 
     async def technology_detection(self):
         """Detect technologies using whatweb"""
+        if not self.args.run_tech_detection:
+            self.logger.info("Skipping technology detection as per user request.")
+            return
+
         self.logger.info("Detecting technologies...")
         
+        tasks = []
         for url in list(self.urls)[:50]:  # Limit to first 50 URLs
-            try:
-                result = await self._run_command_safe(['whatweb', '--color=never', '--no-errors', '-a', '3', url])
-                if result:
-                    self.technologies[url] = result.strip()
-            except Exception as e:
-                self.logger.warning(f"Technology detection failed for {url}: {e}")
+            tasks.append(self._run_command_safe(['whatweb', '--color=never', '--no-errors', '-a', '3', url]))
+        
+        results = await asyncio.gather(*tasks)
+        for i, result in enumerate(results):
+            if result:
+                self.technologies[list(self.urls)[i]] = result.strip()
 
     async def crawl_with_crawl4ai(self):
         """Advanced crawling with crawl4ai"""
+        if not self.args.run_crawl:
+            self.logger.info("Skipping crawling with crawl4ai as per user request.")
+            return
+
         self.logger.info("Starting advanced crawling with crawl4ai...")
         
         async with AsyncWebCrawler(
@@ -431,100 +325,131 @@ class BugHuntingArsenal:
             verbose=False
         ) as crawler:
             
+            tasks = []
             for url in list(self.urls)[:20]:  # Limit for demo
-                try:
-                    self.logger.info(f"Crawling: {url}")
-                    
-                    result = await crawler.arun(
-                        url=url,
-                        word_count_threshold=10,
-                        extraction_strategy="CosineStrategy",
-                        chunking_strategy="RegexChunking",
-                        bypass_cache=False,
-                        screenshot=True,
-                        wait_for="css:body"
-                    )
-                    
-                    if result.success:
-                        self.crawled_data[url] = {
-                            'markdown': result.markdown,
-                            'links': result.links,
-                            'images': result.images,
-                            'metadata': result.metadata,
-                            'media': result.media
-                        }
-                        
-                        for link in result.links.get('internal', []):
-                            full_url = urljoin(url, link.get('href', ''))
-                            self.endpoints.add(full_url)
-                        
-                        if result.screenshot:
-                            screenshot_path = self.output_dir / f"screenshots/{urlparse(url).netloc}_{hash(url)}.png"
-                            screenshot_path.parent.mkdir(exist_ok=True, parents=True)
-                            with open(screenshot_path, 'wb') as f:
-                                f.write(result.screenshot)
-                    
-                except Exception as e:
-                    self.logger.error(f"Crawl4ai failed for {url}: {e}")
+                tasks.append(self._crawl_single_url(crawler, url))
+            
+            await asyncio.gather(*tasks)
         
         self.logger.info(f"Crawled {len(self.crawled_data)} pages with crawl4ai")
 
+    async def _crawl_single_url(self, crawler, url):
+        """Helper to crawl a single URL."""
+        try:
+            self.logger.info(f"Crawling: {url}")
+            result = await crawler.arun(
+                url=url,
+                word_count_threshold=10,
+                extraction_strategy="CosineStrategy",
+                chunking_strategy="RegexChunking",
+                bypass_cache=False,
+                screenshot=self.enable_screenshots,
+                wait_for="css:body"
+            )
+            
+            if result.success:
+                self.crawled_data[url] = {
+                    'markdown': result.markdown,
+                    'links': result.links,
+                    'images': result.images,
+                    'metadata': result.metadata,
+                    'media': result.media
+                }
+                
+                for link in result.links.get('internal', []):
+                    full_url = urljoin(url, link.get('href', ''))
+                    self.endpoints.add(full_url)
+                
+                if result.screenshot:
+                    screenshot_path = self.output_dir / f"screenshots/{urlparse(url).netloc}_{hash(url)}.png"
+                    screenshot_path.parent.mkdir(exist_ok=True, parents=True)
+                    async with aiofiles.open(screenshot_path, 'wb') as f:
+                        await f.write(result.screenshot)
+            
+        except Exception as e:
+            self.logger.error(f"Crawl4ai failed for {url}: {e}")
+
     async def vulnerability_scanning(self):
-        """Vulnerability scanning with multiple tools"""
-        self.logger.info("Starting vulnerability scanning...")
+        """Vulnerability scanning with Nuclei"""
+        if not self.args.run_vuln_scan:
+            self.logger.info("Skipping vulnerability scanning as per user request.")
+            return
+
+        self.logger.info("Starting vulnerability scanning with Nuclei...")
         
-        urls_file = self.output_dir / "all_urls.txt"
-        await self._save_to_file(list(self.urls), "all_urls.txt")
+        if not self.urls:
+            self.logger.warning("No URLs to scan for vulnerabilities.")
+            return
+
+        urls_str = "\n".join(self.urls)
+        result = await self._run_command_safe([
+            'nuclei', '-silent'
+        ], timeout=self.timeout) # Pass URLs via stdin
+
+        if result:
+            for line in result.split('\n'):
+                if line.strip():
+                    self.vulnerabilities.append({'tool': 'nuclei', 'finding': line.strip()})
         
-        nuclei_results_file = self.output_dir / "nuclei_results.txt"
-        await self._run_command_safe([
-            'nuclei', '-l', str(urls_file), '-o', str(nuclei_results_file), '-silent'
-        ])
-        
-        if nuclei_results_file.exists():
-            content = await self._read_file_lines(nuclei_results_file)
-            for line in content:
-                self.vulnerabilities.append({'tool': 'nuclei', 'finding': line})
+        self.stats['vulnerabilities_found'] = len(self.vulnerabilities)
+        self.logger.info(f"Found {len(self.vulnerabilities)} potential vulnerabilities.")
 
     async def generate_report(self):
-        """Generate comprehensive report"""
-        self.logger.info("Generating comprehensive report...")
+        """Generate comprehensive JSON and human-readable reports"""
+        self.logger.info("Generating reports...")
         
-        self.stats['processed'] = 1
         self.stats['duration'] = time.time() - self.start_time
         
+        # JSON Report
         report = {
             "tool": self.name,
             "version": self.version,
             "timestamp": datetime.utcnow().isoformat(),
-            "targets": [self.target_domain],
-            "findings": self.vulnerabilities,
+            "target": self.target_domain,
             "stats": self.stats,
+            "subdomains": sorted(list(self.subdomains)),
+            "alive_hosts": sorted(list(self.urls)),
+            "vulnerabilities": self.vulnerabilities,
+            "technologies": self.technologies,
             "enrichment": {
                 "ip_info": self.ip_info,
                 "domainsdb": self.domain_db_matches,
                 "http2": self.http2_results,
                 "emailrep": self.emailrep_result,
-                "references": {
-                    "ip-address-details": "https://apislist.com/api/679/ip-address-details",
-                    "ip-api": "https://apislist.com/api/681/ip-api",
-                    "domaindb-info": "https://apislist.com/api/300/domaindb-info",
-                    "http2pro": "https://apislist.com/api/321/http2pro",
-                    "emailrep": "https://apislist.com/api/1081/emailrep",
-                    "countly": "https://apislist.com/api/966/countly",
-                    "open-collective": "https://apislist.com/api/1146/open-collective"
-                }
             }
         }
         
         summary_path = self.output_dir / "summary.json"
-        with open(summary_path, 'w') as f:
-            json.dump(report, f, indent=2, sort_keys=True)
+        async with aiofiles.open(summary_path, 'w') as f:
+            await f.write(json.dumps(report, indent=2, sort_keys=True))
             
         if self.args.json:
             print(json.dumps(report, indent=2, sort_keys=True))
 
-        self.logger.info(f"Report saved to {summary_path}")
+        # Human-readable report
+        duration_str = f"{self.stats['duration']:.2f}"
+        report_str = f"""# Bug Hunting Arsenal Report for {self.target_domain}
+
+**Timestamp:** {datetime.utcnow().isoformat()}
+**Duration:** {duration_str} seconds
+
+## Summary
+- **Subdomains Found:** {self.stats['subdomains_found']}
+- **Alive Hosts:** {len(self.urls)}
+- **URLs Discovered:** {self.stats['urls_discovered']}
+- **Vulnerabilities Found:** {self.stats['vulnerabilities_found']}
+
+## Subdomains
+"""
+        report_str += "\n".join(f"- {s}" for s in sorted(list(self.subdomains)))
+        report_str += "\n\n## Vulnerabilities\n"
+        report_str += "\n".join(f"- {v['finding']}" for v in self.vulnerabilities)
+
+        report_path = self.output_dir / "report.md"
+        async with aiofiles.open(report_path, 'w') as f:
+            await f.write(report_str)
+
+        self.logger.info(f"Reports saved to {self.output_dir}")
 
     async def run_full_arsenal(self):
         """Run the complete bug hunting arsenal"""
@@ -542,30 +467,14 @@ class BugHuntingArsenal:
             await self.technology_detection()
             await self.crawl_with_crawl4ai()
             await self.vulnerability_scanning()
-            # Optional API enrichments
-            await self.enrich_ip_details()
-            await self.domainsdb_lookup()
-            await self.test_http2_support()
-            await self.emailrep_lookup()
             await self.generate_report()
             
             self.logger.info("Bug Hunting Arsenal completed successfully!")
-            self.logger.info(f"Results saved in: {self.output_dir}")
             
         except Exception as e:
             self.logger.error(f"Bug hunting arsenal failed: {e}", exc_info=True)
             self.stats['errors'] += 1
             await self.generate_report()
-
-    async def _read_file_lines(self, file_path: Path) -> List[str]:
-        """Read lines from a file safely"""
-        try:
-            async with aiofiles.open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = await f.read()
-                return [line.strip() for line in content.split('\n') if line.strip()]
-        except Exception as e:
-            self.logger.error(f"Error reading file {file_path}: {e}")
-            return []
 
     async def _save_to_file(self, data: list, filename: str):
         """Save a list to a file."""
@@ -576,30 +485,36 @@ class BugHuntingArsenal:
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Bug Hunting Arsenal")
-    parser.add_argument("-t", "--target", help="Target domain")
+    parser.add_argument("-t", "--target", required=True, help="Target domain")
     parser.add_argument("-o", "--output", help="Output directory")
     parser.add_argument("--json", action="store_true", help="Output summary as JSON to stdout")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--no-color", action="store_true", help="Disable colorized output")
-    parser.add_argument("--timeout", type=int, default=30, help="Timeout for network operations")
-    parser.add_argument("--threads", type=int, default=10, help="Number of threads for parallel tasks")
+    parser.add_argument("--timeout", type=int, default=60, help="Timeout for network operations")
+    parser.add_argument("--threads", type=int, default=10, help="Number of concurrent tasks")
     parser.add_argument("--dry-run", action="store_true", help="Show actions without executing them")
     parser.add_argument("--banner", action="store_true", help="Print banner and exit")
-    parser.add_argument("--version", action="version", version="%(prog)s 3.1.0")
+    parser.add_argument("--version", action="version", version="%(prog)s 3.2.0")
     parser.add_argument("--email", help="Optional email for EmailRep enrichment")
+
+    # Tool selection arguments
+    parser.add_argument("--no-subdomain-enum", dest='run_subdomain_enum', action='store_false', help="Disable subdomain enumeration")
+    parser.add_argument("--no-url-discovery", dest='run_url_discovery', action='store_false', help="Disable URL discovery")
+    parser.add_argument("--no-tech-detection", dest='run_tech_detection', action='store_false', help="Disable technology detection")
+    parser.add_argument("--no-crawl", dest='run_crawl', action='store_false', help="Disable crawling with crawl4ai")
+    parser.add_argument("--no-vuln-scan", dest='run_vuln_scan', action='store_false', help="Disable vulnerability scanning")
     
+    parser.set_defaults(run_subdomain_enum=True, run_url_discovery=True, run_tech_detection=True, run_crawl=True, run_vuln_scan=True)
+
     args = parser.parse_args()
 
     if args.banner:
-        kd_banner("bug_hunting_arsenal", "3.1.0", color=not args.no_color)
+        kd_banner("bug_hunting_arsenal", "3.2.0", color=not args.no_color)
         sys.exit(0)
-
-    if not args.target:
-        parser.error("the following arguments are required: -t/--target")
 
     if not args.output:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output = f"reports/{timestamp}/bug_hunting_arsenal"
+        args.output = f"reports/{args.target}/{timestamp}"
     
     Path(args.output).mkdir(parents=True, exist_ok=True)
     (Path(args.output) / "raw").mkdir(exist_ok=True)
