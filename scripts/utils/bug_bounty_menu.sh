@@ -58,6 +58,62 @@ info_msg() {
     log_action "INFO: $message"
 }
 
+# Repo root discovery
+get_repo_root() {
+    if command -v git >/dev/null 2>&1; then
+        git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$SCRIPT_DIR/../../" && pwd)"
+    else
+        echo "$(cd "$SCRIPT_DIR/../../" && pwd)"
+    fi
+}
+
+# Copy a file into this directory if it exists elsewhere in the repo
+copy_helper_if_found() {
+    local filename="$1"
+    local dest_path="$SCRIPT_DIR/$filename"
+    local repo_root
+    repo_root="$(get_repo_root)"
+    if [ -f "$dest_path" ]; then
+        return 0
+    fi
+    # Search for the file in the repo (exclude this directory to avoid loops)
+    local found
+    found=$(find "$repo_root" -type f -name "$filename" -not -path "$SCRIPT_DIR/*" 2>/dev/null | head -n 1)
+    if [ -n "$found" ] && [ -f "$found" ]; then
+        info_msg "Copying helper script $(basename "$found") to $(basename "$dest_path")"
+        cp "$found" "$dest_path" && chmod +x "$dest_path"
+        return 0
+    fi
+    return 1
+}
+
+# Ensure required helper scripts live beside this menu
+sync_helper_scripts() {
+    info_msg "Synchronizing helper scripts into toolkit directory"
+    local helpers=(
+        "js_recon.sh"
+        "wayback.sh"
+        "swagger.sh"
+        "sqli_test.sh"
+        "anon_recon.sh"
+        "kfuzzer.sh"
+        "dorking.py"
+    )
+    local copied_any=false
+    for helper in "${helpers[@]}"; do
+        if [ ! -f "$SCRIPT_DIR/$helper" ]; then
+            if copy_helper_if_found "$helper"; then
+                copied_any=true
+            fi
+        fi
+    done
+    if [ "$copied_any" = true ]; then
+        success_msg "Helper scripts synchronized"
+    else
+        info_msg "Helper scripts already in place or not found in repo"
+    fi
+}
+
 # Warning message
 warn_msg() {
     local message="$1"
@@ -106,7 +162,14 @@ check_dependencies() {
     
     if [ ${#missing_tools[@]} -ne 0 ]; then
         warn_msg "Missing tools: ${missing_tools[*]}"
-        echo -e "${YELLOW}[*] Install missing tools for full functionality${NC}"
+        echo -e "${YELLOW}[*] Some features may be limited until tools are installed${NC}"
+        # Offer automated install if available and interactive (TTY)
+        if [ -t 1 ] && [ -f "$SCRIPT_DIR/install_toolkit.sh" ]; then
+            read -p "Install/Update tools now? (y/N): " install_now
+            if [[ $install_now =~ ^[Yy]$ ]]; then
+                bash "$SCRIPT_DIR/install_toolkit.sh"
+            fi
+        fi
     else
         success_msg "All core dependencies satisfied"
     fi
@@ -2593,6 +2656,8 @@ init() {
     log_action "Bug Bounty Toolkit started"
     check_dependencies
     load_config
+    # Self-heal helper scripts into place when possible
+    sync_helper_scripts
     
     # Check if resuming previous session
     if [ -f "$SCRIPT_DIR/.last_session" ]; then

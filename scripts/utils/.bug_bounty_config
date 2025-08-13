@@ -1,0 +1,9 @@
+# Bug Bounty Toolkit Configuration
+DEFAULT_THREADS=50
+DEFAULT_TIMEOUT=30
+DEFAULT_DELAY=1
+WORDLIST_DIR="/usr/share/wordlists"
+NUCLEI_TEMPLATES_DIR="/home/kali/nuclei-templates"
+OUTPUT_FORMAT="both"
+ENABLE_SCREENSHOTS=true
+AUTO_ORGANIZE=true
