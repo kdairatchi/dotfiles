@@ -23,23 +23,40 @@ source $ZSH/oh-my-zsh.sh
 # Load shared settings and aliases
 [ -f "$HOME/.shell_common" ] && source "$HOME/.shell_common"
 
-# ---------------------------------------------
-# Aliases
-# ---------------------------------------------
+# ----------------------------
+# Basic Aliases
+# ----------------------------
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 alias ..='cd ..'
 alias ...='cd ../..'
+alias ....='cd ../../..'
 
-# Personal alias
-alias username="linkook"
+# ----------------------------
+# Bug Bounty Tool Aliases 💣
+# ----------------------------
+alias blackwidow="$HOME/tools/BlackWidow/blackwidow"
+alias corsy="python3 $HOME/tools/Corsy/corsy.py"
+alias eyewitness="python3 $HOME/tools/EyeWitness/Python/EyeWitness.py"
+alias gobuster="$HOME/tools/gobuster/gobuster"
+alias gitdorker="python3 $HOME/tools/GitDorker/GitDorker.py"
+alias gsec="python3 $HOME/tools/Gsec/gsec.py"
+alias jsfinder="python3 $HOME/tools/JSFinder/jsfinder.py"
+alias loxs="python3 $HOME/tools/loxs/loxs.py"
+alias sniper="sudo $HOME/tools/Sn1per/sniper"
+alias spiderfoot="python3 $HOME/tools/spiderfoot/sf.py"
+alias ufx="python3 $HOME/tools/UFX/ufx.py"
+alias xsstrike="python3 $HOME/tools/XSStrike/xsstrike.py"
+alias lazyxss="python3 $HOME/tools/Lazyxss/main.py"
+alias random="python3 $HOME/scripts/bounty_randomizer.py"
+alias jsscan="$HOME/tools/JSFScan.sh"
+alias domsink="python3 $HOME/gov/domsink_scanner.py"
+alias domsinkscan="python3 $HOME/gov/enhanced_domsink_scanner.py"
 
 # ----------------------------
 # Personal Scripts ⚙️
 # ----------------------------
-
-# Recon
 alias recon="$HOME/scripts/recon.sh"
 alias wayback="$HOME/scripts/wayback.sh"
 alias waybackmaster="$HOME/scripts/waybackmaster"
@@ -52,8 +69,6 @@ alias swagger="$HOME/scripts/swagger.sh"
 alias jsrecon="$HOME/scripts/js_recon.sh"
 alias dorking="python3 $HOME/scripts/dorking.py"
 alias waybackfind="python3 $HOME/WayBackupFinder/wayBackupFinder.py"
-
-# Util & Setup
 alias javafxenv="$HOME/scripts/java-install.sh"
 alias securecomms="$HOME/scripts/secure_comms.sh"
 alias pcupdater="$HOME/scripts/pcupdater"
@@ -63,44 +78,115 @@ alias puny="python3 $HOME/scripts/punycode_gen.py"
 alias vt="$HOME/scripts/vt.sh"
 alias nucleih="$HOME/scripts/nuclei_debug_helper.sh"
 alias menu="$HOME/scripts/bug_bounty_menu.sh"
-
-# Fuzz & SQL
 alias sqli="$HOME/scripts/sqli_test.sh"
 alias fuzz="$HOME/scripts/kfuzzer.sh"
 alias rustscan="$HOME/tools/RustScan/target/release/rustscan"
 
-# ---------------------------------------------
-# Dev Language Paths (shared via ~/.shell_common when present)
-# ---------------------------------------------
-[ -f "$HOME/.shell_common" ] || {
-  export PATH="$HOME/.local/bin:$PATH"
-  export PATH="$HOME/.cargo/bin:$PATH"
-  export PATH="/usr/local/go/bin:$PATH"
-  export GOPATH="$HOME/go"
-  export PATH="$GOPATH/bin:$PATH"
+# ----------------------------
+# Help System 🆘
+# ----------------------------
+bbhelp() {
+  echo "${GREEN}❯❯❯ Bug Bounty Toolkit Help ❮❮❮${RESET}"
+  echo "${YELLOW}Basic Navigation:${RESET}"
+  echo "  ll, la, l        : Enhanced ls commands"
+  echo "  .., ..., ....    : Quick directory navigation"
+  
+  echo "\n${YELLOW}Recon Tools:${RESET}"
+  echo "  recon            : Full recon workflow"
+  echo "  wayback          : Wayback machine URL fetcher"
+  echo "  jsrecon          : JavaScript endpoint discovery"
+  echo "  dorking          : Automated Google dorking"
+  
+  echo "\n${YELLOW}Vulnerability Scanners:${RESET}"
+  echo "  xsstrike         : Advanced XSS scanner"
+  echo "  corsy            : CORS misconfig detector"
+  echo "  domsinkscan      : DOM-based sink scanner"
+  echo "  sqli             : SQL injection tester"
+  
+  echo "\n${YELLOW}Utility Scripts:${RESET}"
+  echo "  javafxenv        : Java environment setup"
+  echo "  pcupdater        : System update manager"
+  echo "  vt               : VirusTotal integration"
+  echo "  random           : Target randomizer"
+  
+  echo "\n${YELLOW}Workflow Shortcuts:${RESET}"
+  echo "  bughunt          : Initiate bug hunting workflow"
+  echo "  luckyspin        : Rotate through targets"
+  echo "  menu             : Interactive tool menu"
+  
+  echo "\n${YELLOW}Parallel Scanners:${RESET}"
+  echo "  nuclei-par       : Parallel Nuclei scanning"
+  echo "  httpx-par        : Mass HTTP probing"
+  echo "  wayback-par      : Parallel Wayback scraping"
+  
+  echo "\n${CYAN}For detailed usage: type <command> -h or man <command>${RESET}"
+  echo "${CYAN}View all defined tools: alias | grep '^alias'${RESET}"
 }
 
-# ---------------------------------------------
-# Node Version Manager (NVM)
-# ---------------------------------------------
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+# ----------------------------
+# New Additions 🚀
+# ----------------------------
+# 1. Enhanced RustScan
+alias rustscan-fast="rustscan -a $1 -u 5000 -- -A -sC -T4"
 
-# ---------------------------------------------
-# Java & JavaFX Setup
-# ---------------------------------------------
+# 2. Smart recon workflow
+smartrecon() {
+  domain=$1
+  echo "${GREEN}[+] Starting smart recon on $domain${RESET}"
+  waybackurls $domain > wayback.txt
+  httpx -l wayback.txt -status-code -title -tech-detect -o live.txt
+  nuclei -l live.txt -t ~/nuclei-templates/ -es info -o nuclei-results.txt
+  echo "${CYAN}[+] Recon completed: wayback.txt, live.txt, nuclei-results.txt${RESET}"
+}
+
+# 3. Notification helper
+alias notify='echo -e "\a" && tput bel'
+
+# 4. JWT debugger
+alias jwtdebug="python3 $HOME/tools/jwt_tool/jwt_tool.py"
+
+# 5. API discovery
+alias apifinder="grep -iR 'api\|v[1-9]' $1"
+
+# ----------------------------
+# Environment Setup
+# ----------------------------
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+# Path enhancements
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="/usr/local/go/bin:$PATH"
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+export PATH="$HOME/tools/urldedupe:$PATH"
+export PATH="$HOME/tools/loxs:$PATH"
+
+# Java Setup
 export JAVA_HOME="$HOME/.temurin"
 export PATH="$JAVA_HOME/bin:$PATH"
 export JAVAFX_HOME="/opt/javafx-sdk"
 export PATH="$JAVAFX_HOME/bin:$PATH"
 
-# ---------------------------------------------
-# Extra Tools
-# ---------------------------------------------
-export PATH="$HOME/tools/urldedupe:$PATH"
-export PATH="$HOME/tools/loxs:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
+# NVM Setup
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# ----------------------------
+# Tool Initialization
+# ----------------------------
+# Auto-completion
+autoload -U compinit && compinit
+
+# Powerlevel10k Prompt
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
 
 for tool in "$HOME/tools"/*; do
   [ -d "$tool/bin" ] && export PATH="$tool/bin:$PATH"
@@ -153,17 +239,21 @@ wayback-par() {
 
 # Parallel GF pattern matching
 gf-par() {
-    local pattern="$1"
-    local urls_file="$2"
-    [[ -z "$pattern" || -z "$urls_file" ]] && { echo "Usage: gf-par pattern urls.txt"; return 1; }
-    parallel -j4 "gf '$pattern' < {} > '{}.${pattern}.txt'" :::: "$urls_file"
+  local pattern="$1" urls_file="$2"
+  [[ -z "$pattern" || -z "$urls_file" ]] && { echo "Usage: gf-par pattern urls.txt"; return 1; }
+  parallel -j4 "echo {} | gf '$pattern' > '\$({ printf \"%s.%s.txt\" \"{}\" \"$pattern\"; })'" :::: "$urls_file"
 }
 
-# Parallel JSFinder
 jsfinder-par() {
-    local urls_file="$1"
-    [[ -z "$urls_file" ]] && { echo "Usage: jsfinder-par urls.txt"; return 1; }
-    parallel -j5 'python3 /home/kali/tools/JSFinder/jsfinder.py -u {} -d' :::: "$urls_file"
+  local urls_file="$1"
+  [[ -z "$urls_file" ]] && { echo "Usage: jsfinder-par urls.txt"; return 1; }
+  parallel -j5 "python3 /home/kali/tools/JSFinder/jsfinder.py -u {} -d > '\$({ printf \"%s.jsf.txt\" \"{}\"; })'" :::: "$urls_file"
+}
+
+xsstrike-par() {
+  local urls_file="$1"
+  [[ -z "$urls_file" ]] && { echo "Usage: xsstrike-par urls.txt"; return 1; }
+  parallel -j5 "python3 /home/kali/tools/XSStrike/xsstrike.py -u {} --crawl > '\$({ printf \"%s.xss.txt\" \"{}\"; })'" :::: "$urls_file"
 }
 
 # Parallel RustScan
@@ -173,12 +263,8 @@ rustscan-par() {
     parallel -j4 "/home/kali/tools/RustScan/target/release/rustscan -a {} -r 1-65535" :::: "$targets_file"
 }
 
-# Parallel XSStrike
-xsstrike-par() {
-    local urls_file="$1"
-    [[ -z "$urls_file" ]] && { echo "Usage: xsstrike-par urls.txt"; return 1; }
-    parallel -j5 'python3 /home/kali/tools/XSStrike/xsstrike.py -u {} --crawl' :::: "$urls_file"
-}
+export J=${J:-10}  # default jobs
+# Then replace -jN with -j"$J" in your functions for quick tuning.
 
 smartgrab() {
   local url="$1"
@@ -217,5 +303,169 @@ for line in sys.stdin:
     abs=U.urljoin(base, href)
     if abs.startswith(("http://","https://")) and abs not in seen:
         seen.add(abs); print(abs)' "$url"
+  fi
+}
+
+### === UI / Animation helpers ================================================
+# Pretty spinner wrapper (falls back if gum not installed)
+spin() { local t="$1"; shift; if command -v gum >/dev/null 2>&1; then gum spin --title "$t" -- "$@"; else echo "[*] $t"; "$@"; fi; }
+
+# Progress-enabled GNU parallel shortcut using your J concurrency knob
+P() { parallel --bar -j"${J:-10}" "$@"; }
+
+# Section banner
+banner() { if command -v figlet >/dev/null 2>&1; then figlet -w 120 "$*"; else printf "\n==== %s ====\n" "$*"; fi; }
+
+# Quick timing wrapper
+timeit() { /usr/bin/time -f '[time] %E | RSS:%M KB' "$@"; }
+
+### === Passive subdomain intel (no/low auth) ================================
+# crt.sh (CT logs)
+crtsh() {
+  local d="$1"; [ -z "$d" ] && { echo "Usage: crtsh domain.com"; return 1; }
+  curl -sG 'https://crt.sh/' --data-urlencode "q=%25.$d" --data "output=json" \
+  | jq -r '.[].name_value' | tr ' ' '\n' | sed 's/^\*\.//' | sort -u
+}
+
+# CertSpotter (public endpoint, rate-limited)
+certspotter() {
+  local d="$1"; [ -z "$d" ] && { echo "Usage: certspotter domain.com"; return 1; }
+  curl -sG 'https://api.certspotter.com/v1/issuances' \
+    --data-urlencode "domain=$d" --data "include_subdomains=true&expand=dns_names" \
+  | jq -r '.[].dns_names[]' | sed 's/^\*\.//' | sort -u
+}
+
+# Anubis (jldc.me)
+anubis() {
+  local d="$1"; [ -z "$d" ] && { echo "Usage: anubis domain.com"; return 1; }
+  curl -s "https://jldc.me/anubis/subdomains/$d" | jq -r '.[]' | sort -u
+}
+
+# Aggregate passive subs
+subs-all() {
+  local d="$1"; [ -z "$d" ] && { echo "Usage: subs-all domain.com"; return 1; }
+  { crtsh "$d"; certspotter "$d"; anubis "$d"; } | sort -u
+}
+
+### === Sitemap / robots / links & quick checks ===============================
+robotsgrab() { local base="$1"; curl -sL --compressed "$base/robots.txt" | sed 's/\r$//'; }
+sitemap-urls() { local base="$1"; curl -sL --compressed "$base/sitemap.xml" | grep -oP '(?<=<loc>)[^<]+'; }
+
+# CORS probe (simple)
+cors-check() { curl -s -I -H 'Origin: https://evil.example' "$1" | grep -i 'access-control-allow-'; }
+
+# Frame/CSP headers
+clickjack-check() { curl -sI "$1" | egrep -i 'x-frame-options|content-security-policy'; }
+csp-dump() { curl -sI "$1" | grep -i 'content-security-policy'; }
+
+# Quick JS link collector (absolute URLs only)
+jslinks() { linksabs "$1" | grep -Ei '\.js($|\?)' | sort -u; }
+
+# OpenAPI guesser (common paths)
+openapi-probe() {
+  local base="$1"; [ -z "$base" ] && { echo "Usage: openapi-probe https://site.tld"; return 1; }
+  for p in /openapi.json /swagger.json /v2/swagger.json /api-docs /v3/api-docs; do
+    if curl -skL "$base$p" | jq -e '.info.title' >/dev/null 2>&1; then echo "$base$p"; fi
+  done
+}
+
+### === urlscan.io (API) ======================================================
+# export URLSCAN_API_KEY=xxxx
+urlscan-submit() {
+  : "${URLSCAN_API_KEY:?Set URLSCAN_API_KEY}"; local url="$1"
+  curl -s 'https://urlscan.io/api/v1/scan/' \
+    -H "API-Key: $URLSCAN_API_KEY" -H 'Content-Type: application/json' \
+    --data "{\"url\":\"$url\",\"visibility\":\"unlisted\"}" | jq -r '.result'
+}
+urlscan-search() {
+  local q="$*"; curl -sG 'https://urlscan.io/api/v1/search/' --data-urlencode "q=$q" | jq -r '.results[].task.url'
+}
+
+### === VirusTotal (API) ======================================================
+# export VT_API_KEY=xxxx
+vt-url() {
+  : "${VT_API_KEY:?Set VT_API_KEY}"; local url="$1"
+  local id; id=$(curl -s -X POST 'https://www.virustotal.com/api/v3/urls' \
+            -H "x-apikey: $VT_API_KEY" -F "url=$url" | jq -r '.data.id')
+  curl -s -H "x-apikey: $VT_API_KEY" "https://www.virustotal.com/api/v3/analyses/$id" | jq
+}
+vt-ip() {
+  : "${VT_API_KEY:?Set VT_API_KEY}"; local ip="$1"
+  curl -s -H "x-apikey: $VT_API_KEY" "https://www.virustotal.com/api/v3/ip_addresses/$ip" | jq
+}
+
+### === Shodan (API) ==========================================================
+# export SHODAN_API_KEY=xxxx
+shodan-search() {
+  : "${SHODAN_API_KEY:?Set SHODAN_API_KEY}"; local q="$*"
+  curl -sG 'https://api.shodan.io/shodan/host/search' \
+    --data-urlencode "query=$q" --data "key=$SHODAN_API_KEY" \
+  | jq -r '.matches[] | "\(.ip_str):\(.port) \(.hostnames|join(",")) \(.product // "")"'
+}
+shodan-host() {
+  : "${SHODAN_API_KEY:?Set SHODAN_API_KEY}"; local ip="$1"
+  curl -s "https://api.shodan.io/shodan/host/$ip?key=$SHODAN_API_KEY" | jq
+}
+
+### === GitHub Code Search (API) ==============================================
+# export GITHUB_TOKEN=ghp_xxx
+gh-code() {
+  : "${GITHUB_TOKEN:?Set GITHUB_TOKEN}"; local q="$*"
+  curl -sG 'https://api.github.com/search/code' \
+    -H "Authorization: Bearer $GITHUB_TOKEN" --data-urlencode "q=$q" \
+  | jq -r '.items[] | [.repository.full_name, .path, .html_url] | @tsv'
+}
+
+### === SecurityTrails (API) [optional] =======================================
+# export ST_API_KEY=xxxx
+st-subs() {
+  : "${ST_API_KEY:?Set ST_API_KEY}"; local d="$1"
+  curl -s "https://api.securitytrails.com/v1/domain/$d/subdomains" \
+    -H "APIKEY: $ST_API_KEY" | jq -r '.subdomains[]' | sed "s/$/.$d/" | sort -u
+}
+
+### === Misc recon helpers ====================================================
+# Gowitness screenshots (parallel)
+gowit-par() { local f="$1"; [ -z "$f" ] && { echo "Usage: gowit-par urls.txt"; return 1; }
+  P "gowitness single --url {} --destination ./gowitness_shots" :::: "$f"; }
+
+# ffuf common content discovery (requires ffuf + wordlist)
+ffuf-common() {
+  local base="$1" wl="${2:-/usr/share/seclists/Discovery/Web-Content/common.txt}"
+  ffuf -u "$base/FUZZ" -w "$wl" -ac -t 50 -of md -o "ffuf_$(echo "$base"|sed 's#[^A-Za-z0-9]#_#g').md"
+}
+
+# Simple open redirect probe on a list
+redir-probe() {
+  local f="$1" param="${2:-next}"; [ -z "$f" ] && { echo "Usage: redir-probe urls.txt [param]"; return 1; }
+  P "curl -sk -I '{}'?$param=https://example.org | egrep -i 'location|http/'" :::: "$f"
+}
+
+### === Glue workflows (animated) =============================================
+# End-to-end: gather subs → httpx → nuclei (animated)
+bb-fast() {
+  local domain="$1"; [ -z "$domain" ] && { echo "Usage: bb-fast domain.com"; return 1; }
+  banner "Recon $domain"
+  spin "Fetching subs (CT/Anubis/CertSpotter)" subs-all "$domain" | tee subs.txt >/dev/null
+  spin "Resolving + probing live with httpx" bash -c 'sort -u subs.txt | httpx -silent -title -status-code -tech-detect' | tee httpx.out >/dev/null
+  awk "/\[200]/{print \$1}" httpx.out | sort -u > live.txt
+  spin "Nuclei customs on live" nuclei-par live.txt
+  echo "[+] Done. Files: subs.txt, httpx.out, live.txt, *.nuclei.txt"
+}
+
+# Quick API triage bundle with animation
+triage-api() {
+  local target="$1"; [ -z "$target" ] && { echo "Usage: triage-api https://site.tld OR IP"; return 1; }
+  banner "API Triage"
+  if [[ "$target" =~ ^https?:// ]]; then
+    spin "robots" robotsgrab "$target" | sed -n '1,40p'
+    spin "sitemap" sitemap-urls "$target" | sed -n '1,40p'
+    spin "CORS" cors-check "$target"
+    spin "CSP" csp-dump "$target"
+    spin "OpenAPI probe" openapi-probe "$target"
+  else
+    # looks like an IP
+    if [ -n "${SHODAN_API_KEY:-}" ]; then spin "Shodan host" shodan-host "$target" | jq '. | {ip_str,ports,hostnames,org,asn}'; fi
+    if [ -n "${VT_API_KEY:-}" ]; then spin "VT IP" vt-ip "$target" | jq '.data.attributes.last_analysis_stats'; fi
   fi
 }
