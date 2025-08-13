@@ -1,29 +1,4 @@
-# --- GPG Key Fixes for Signal and Element ---
-echo -e "\n${YELLOW}🔑 Checking for missing GPG keys (Signal, Element)...${NC}"
-if grep -q 'signal.org' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
-    echo -e "${YELLOW}🔑 Importing Signal repository key...${NC}"
-    curl -fsSL https://updates.signal.org/desktop/apt/keys.asc | sudo gpg --dearmor -o /usr/share/keyrings/signal-desktop-keyring.gpg
-    sudo tee /etc/apt/sources.list.d/signal-xenial.list > /dev/null <<EOF
-deb [arch=amd64 signed-by=/usr/share/keyrings/signal-desktop-keyring.gpg] https://updates.signal.org/desktop/apt xenial main
-EOF
-fi
-
-if grep -q 'element.io' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
-    echo -e "${YELLOW}🔑 Importing Element repository key...${NC}"
-    curl -fsSL https://packages.element.io/debian/element-io-archive-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/element-io-archive-keyring.gpg
-    sudo tee /etc/apt/sources.list.d/element-io.list > /dev/null <<EOF
-
-
 #!/bin/bash
-deb [signed-by=/usr/share/keyrings/element-io-archive-keyring.gpg] https://packages.element.io/debian/ default main
-EOF
-fi
-
-# --- Optional: Repo Cleanup for Users Who Don't Need Signal/Element ---
-if [ "$1" = "--clean-repos" ]; then
-    echo -e "${YELLOW}🧹 Cleaning up Signal and Element repositories...${NC}"
-    sudo rm -f /etc/apt/sources.list.d/signal-xenial.list /etc/apt/sources.list.d/element-io.list
-fi
 
 # Bug Bounty Oneliner Runner - Complete CLI Menu
 # Author: Security Researcher

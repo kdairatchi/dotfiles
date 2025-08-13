@@ -18,7 +18,7 @@ load '../lib/bats-assert/load.bash'
 @test "alienvault.sh --banner" {
   run ./alienvault.sh --banner
   assert_success
-  assert_output --partial "KDAIRATCHI SECURITY TOOLKIT"
+  assert_output --partial "SECURITY TOOLKIT"
 }
 
 @test "alienvault.sh --dry-run" {

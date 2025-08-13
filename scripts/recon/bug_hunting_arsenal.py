@@ -6,7 +6,7 @@
 # =========================================================
 """
 bug_hunting_arsenal.py - Automated Reconnaissance and Vulnerability Assessment
-Part of Kdairatchi Security Research Tools
+Part of Security Research Tools
 Version: 3.1.0
 
 Integrates crawl4ai with essential bug bounty tools for comprehensive testing
@@ -76,6 +76,11 @@ class BugHuntingArsenal:
         self.technologies: Dict[str, str] = {}
         self.crawled_data: Dict[str, Dict] = {}
         self.vulnerabilities: List[Dict] = []
+        # Enrichment storage
+        self.ip_info: Dict[str, Dict] = {}
+        self.domain_db_matches: List[Dict] = []
+        self.emailrep_result: Optional[Dict] = None
+        self.http2_results: Dict[str, bool] = {}
         
         # Tool availability
         self.available_tools = {
@@ -252,6 +257,99 @@ class BugHuntingArsenal:
             subdomain_list = sorted(list(self.subdomains))
             await self._save_to_file(subdomain_list, "subdomains.txt")
 
+    async def _resolve_ips(self, hostname: str) -> List[str]:
+        """Resolve A records for a hostname using dnspython if available, else Google DoH."""
+        ips: List[str] = []
+        try:
+            if dns is not None:
+                answers = dns.resolver.resolve(hostname, 'A')  # type: ignore
+                ips = [rdata.address for rdata in answers]
+            else:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+                    async with session.get(f"https://dns.google/resolve?name={hostname}&type=A") as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            for ans in data.get('Answer', []) or []:
+                                if ans.get('type') == 1 and ans.get('data'):
+                                    ips.append(ans['data'])
+        except Exception as e:
+            self.logger.debug(f"IP resolution failed for {hostname}: {e}")
+        return list(sorted(set(ips)))
+
+    async def enrich_ip_details(self) -> None:
+        """Enrich target IPs using public IP info services (ip-api, ipapi.co)."""
+        self.logger.info("Enriching IP information for target domain...")
+        ips = await self._resolve_ips(self.target_domain)
+        if not ips:
+            self.logger.warning("No IPs resolved for target; skipping IP enrichment")
+            return
+
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            for ip in ips:
+                # Try ip-api.com first (public, no key)
+                try:
+                    async with session.get(f"http://ip-api.com/json/{ip}") as r:  # http per public API
+                        if r.status == 200:
+                            self.ip_info[ip] = await r.json()
+                            continue
+                except Exception as e:
+                    self.logger.debug(f"ip-api lookup failed for {ip}: {e}")
+
+                # Fallback to ipapi.co (JSON)
+                try:
+                    async with session.get(f"https://ipapi.co/{ip}/json/") as r2:
+                        if r2.status == 200:
+                            self.ip_info[ip] = await r2.json()
+                except Exception as e:
+                    self.logger.debug(f"ipapi.co lookup failed for {ip}: {e}")
+
+    async def domainsdb_lookup(self) -> None:
+        """Query DomainsDB for related domains similar to DomainDb Info."""
+        self.logger.info("Querying DomainsDB for related domains...")
+        base = self.target_domain.split('.')[0]
+        api = f"https://api.domainsdb.info/v1/domains/search?domain={base}"
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+                async with session.get(api) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        self.domain_db_matches = data.get('domains', []) or []
+        except Exception as e:
+            self.logger.debug(f"DomainsDB lookup failed: {e}")
+
+    async def test_http2_support(self) -> None:
+        """Test HTTP/2 support for a subset of alive URLs using HTTP2.Pro."""
+        if not self.urls:
+            return
+        self.logger.info("Testing HTTP/2 support...")
+        limit_urls = list(self.urls)[:30]
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            for url in limit_urls:
+                try:
+                    async with session.get(f"https://www.http2.pro/api/v1/curl?url={url}") as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            ok = False
+                            if isinstance(data, dict):
+                                ok = data.get('http2', False) or data.get('ok', False) or (data.get('protocol') in ('h2', 'HTTP/2'))
+                            self.http2_results[url] = bool(ok)
+                except Exception as e:
+                    self.logger.debug(f"HTTP/2 test failed for {url}: {e}")
+
+    async def emailrep_lookup(self) -> None:
+        """Lookup email reputation via EmailRep if --email provided."""
+        if not getattr(self.args, 'email', None):
+            return
+        email = self.args.email
+        self.logger.info(f"Checking EmailRep for {email}...")
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+                async with session.get(f"https://emailrep.io/{email}") as resp:
+                    if resp.status == 200:
+                        self.emailrep_result = await resp.json()
+        except Exception as e:
+            self.logger.debug(f"EmailRep lookup failed: {e}")
+
     async def probe_alive_hosts(self):
         """Probe alive hosts using httpx"""
         self.logger.info("Probing alive hosts...")
@@ -401,7 +499,22 @@ class BugHuntingArsenal:
             "timestamp": datetime.utcnow().isoformat(),
             "targets": [self.target_domain],
             "findings": self.vulnerabilities,
-            "stats": self.stats
+            "stats": self.stats,
+            "enrichment": {
+                "ip_info": self.ip_info,
+                "domainsdb": self.domain_db_matches,
+                "http2": self.http2_results,
+                "emailrep": self.emailrep_result,
+                "references": {
+                    "ip-address-details": "https://apislist.com/api/679/ip-address-details",
+                    "ip-api": "https://apislist.com/api/681/ip-api",
+                    "domaindb-info": "https://apislist.com/api/300/domaindb-info",
+                    "http2pro": "https://apislist.com/api/321/http2pro",
+                    "emailrep": "https://apislist.com/api/1081/emailrep",
+                    "countly": "https://apislist.com/api/966/countly",
+                    "open-collective": "https://apislist.com/api/1146/open-collective"
+                }
+            }
         }
         
         summary_path = self.output_dir / "summary.json"
@@ -429,6 +542,11 @@ class BugHuntingArsenal:
             await self.technology_detection()
             await self.crawl_with_crawl4ai()
             await self.vulnerability_scanning()
+            # Optional API enrichments
+            await self.enrich_ip_details()
+            await self.domainsdb_lookup()
+            await self.test_http2_support()
+            await self.emailrep_lookup()
             await self.generate_report()
             
             self.logger.info("Bug Hunting Arsenal completed successfully!")
@@ -468,6 +586,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show actions without executing them")
     parser.add_argument("--banner", action="store_true", help="Print banner and exit")
     parser.add_argument("--version", action="version", version="%(prog)s 3.1.0")
+    parser.add_argument("--email", help="Optional email for EmailRep enrichment")
     
     args = parser.parse_args()
 

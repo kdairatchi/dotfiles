@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test_alienvault.sh - Smoke tests for alienvault.sh
-# Part of Kdairatchi Security Research Tools
+# Part of Security Research Tools
 
 set -euo pipefail
 

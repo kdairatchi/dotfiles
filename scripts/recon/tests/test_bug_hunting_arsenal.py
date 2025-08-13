@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 test_bug_hunting_arsenal.py - Unit tests for bug_hunting_arsenal.py
-Part of Kdairatchi Security Research Tools
+Part of Security Research Tools
 """
 
 import unittest
@@ -128,7 +128,7 @@ class TestBugHuntingArsenal(unittest.TestCase):
                 mock_logger.warning.assert_called_with("No subdomains to probe")
         
         # Initialize logger for test
-        from kdai_python import KdaiLogger
+        from lib.kdai_python import KdaiLogger
         self.arsenal.logger = KdaiLogger("test")
         
         asyncio.run(test_no_subdomains())
@@ -147,7 +147,7 @@ class TestBugHuntingArsenal(unittest.TestCase):
                 mock_logger.warning.assert_called_with("No alive hosts to discover URLs from")
         
         # Initialize logger for test
-        from kdai_python import KdaiLogger
+        from lib.kdai_python import KdaiLogger
         self.arsenal.logger = KdaiLogger("test")
         
         asyncio.run(test_no_urls())
@@ -187,7 +187,7 @@ class TestBugHuntingArsenal(unittest.TestCase):
                 mock_logger.warning.assert_called_with("No URLs for vulnerability scanning")
         
         # Initialize logger for test
-        from kdai_python import KdaiLogger
+        from lib.kdai_python import KdaiLogger
         self.arsenal.logger = KdaiLogger("test")
         
         asyncio.run(test_no_urls())
@@ -206,7 +206,7 @@ class TestBugHuntingArsenal(unittest.TestCase):
                 mock_logger.warning.assert_called_with("No crawled data for parameter mining")
         
         # Initialize logger for test
-        from kdai_python import KdaiLogger
+        from lib.kdai_python import KdaiLogger
         self.arsenal.logger = KdaiLogger("test")
         
         asyncio.run(test_no_data())
@@ -236,7 +236,7 @@ class TestBugHuntingArsenal(unittest.TestCase):
                 mock_logger.success.assert_called()
         
         # Initialize logger for test
-        from kdai_python import KdaiLogger
+        from lib.kdai_python import KdaiLogger
         self.arsenal.logger = KdaiLogger("test")
         
         asyncio.run(test_with_data())
@@ -291,7 +291,7 @@ class TestKdaiValidator(unittest.TestCase):
     """Unit tests for KdaiValidator"""
     
     def setUp(self):
-        from kdai_python import KdaiValidator
+        from lib.kdai_python import KdaiValidator
         self.validator = KdaiValidator
     
     def test_domain_validation(self):

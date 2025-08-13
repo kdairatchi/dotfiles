@@ -1,408 +1,664 @@
+#!/usr/bin/env python3
+"""
+Bug Hunting Arsenal Menu System
+Enhanced interactive menu for security reconnaissance tools
+"""
+
 import os
 import sys
 import time
 import json
-import hashlib
-import mimetypes
+import asyncio
 import subprocess
 import importlib.util
 import signal
 import shutil
 from pathlib import Path
-from colorama import Fore, Style, init
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+from colorama import Fore, Style, Back, init
 from prompt_toolkit import prompt
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.completion import PathCompleter, WordCompleter
+from prompt_toolkit.styles import Style as PromptStyle
 
+# Initialize colorama
 init(autoreset=True)
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+# Custom prompt style
+custom_style = PromptStyle.from_dict({
+    'prompt': 'ansicyan bold',
+    'input': 'ansiwhite',
+})
 
-def is_package_installed(package):
-    return importlib.util.find_spec(package) is not None
+class BugHuntingMenu:
+    """Enhanced menu system for Bug Hunting Arsenal"""
+    
+    def __init__(self):
+        self.project_root = Path(__file__).parent
+        self.arsenal_script = self.project_root / "bug_hunting_arsenal.py"
+        self.requirements_file = self.project_root / "requirements.txt"
+        self.venv_dir = self.project_root / "venv"
+        self.reports_dir = self.project_root / "reports"
+        self.tools_dir = self.project_root.parent.parent / "tools"
+        
+        # Colors and styling
+        self.colors = {
+            'primary': Fore.CYAN,
+            'secondary': Fore.BLUE,
+            'success': Fore.GREEN,
+            'warning': Fore.YELLOW,
+            'error': Fore.RED,
+            'info': Fore.MAGENTA,
+            'reset': Style.RESET_ALL,
+            'bold': Style.BRIGHT,
+            'dim': Style.DIM
+        }
+        
+        # Menu options
+        self.main_menu_options = [
+            ("1", "🔍 Run Bug Hunting Arsenal", self.run_arsenal),
+            ("2", "🛠️  Setup & Installation", self.setup_menu),
+            ("3", "📊 View Reports", self.reports_menu),
+            ("4", "🔧 Tool Management", self.tools_menu),
+            ("5", "📚 Documentation", self.documentation_menu),
+            ("6", "⚙️  Configuration", self.config_menu),
+            ("0", "🚪 Exit", self.exit_program)
+        ]
+        
+        self.setup_options = [
+            ("1", "🐍 Python Environment", self.setup_python_env),
+            ("2", "📦 Install Dependencies", self.install_dependencies),
+            ("3", "🔨 Install Security Tools", self.install_security_tools),
+            ("4", "✅ Run Tests", self.run_tests),
+            ("5", "🔍 Check System Status", self.check_system_status),
+            ("0", "⬅️  Back to Main Menu", None)
+        ]
+        
+        self.tools_options = [
+            ("1", "🔍 Subdomain Enumeration", self.subdomain_tools),
+            ("2", "🌐 URL Discovery", self.url_discovery_tools),
+            ("3", "🔒 Vulnerability Scanning", self.vuln_scanning_tools),
+            ("4", "📱 Technology Detection", self.tech_detection_tools),
+            ("5", "📄 Payload Generation", self.payload_tools),
+            ("0", "⬅️  Back to Main Menu", None)
+        ]
 
-def install_package(package):
-    try:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-        print(f"{Fore.GREEN}[+] {package} installed successfully.")
-    except subprocess.CalledProcessError:
-        print(f"{Fore.RED}[!] Failed to install {package}.")
+    def clear_screen(self):
+        """Clear the terminal screen"""
+        os.system('cls' if os.name == 'nt' else 'clear')
 
-def check_and_install_packages(packages):
-    for package in packages:
-        if is_package_installed(package):
-            print(f"{Fore.GREEN}[+] {package} is already installed.")
+    def print_banner(self):
+        """Print the main banner"""
+        banner = f"""
+{self.colors['primary']}{'='*70}
+{self.colors['bold']}  🛡️  KDAIRATCHI SECURITY TOOLKIT  🛡️
+{self.colors['secondary']}  Bug Hunting Arsenal - Interactive Menu
+{self.colors['info']}  "real never lies." | github.com/kdairatchi/dotfiles
+{self.colors['primary']}{'='*70}{self.colors['reset']}
+"""
+        print(banner)
+
+    def print_status_bar(self, message: str, status: str = "INFO"):
+        """Print a status bar with message"""
+        status_colors = {
+            "INFO": self.colors['info'],
+            "SUCCESS": self.colors['success'],
+            "WARNING": self.colors['warning'],
+            "ERROR": self.colors['error']
+        }
+        
+        color = status_colors.get(status, self.colors['info'])
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"{color}[{timestamp}] {status}: {message}{self.colors['reset']}")
+
+    def print_menu(self, title: str, options: List[Tuple[str, str, Optional[callable]]], 
+                   subtitle: str = ""):
+        """Print a formatted menu"""
+        print(f"\n{self.colors['primary']}{'='*50}")
+        print(f"{self.colors['bold']}{title}")
+        if subtitle:
+            print(f"{self.colors['secondary']}{subtitle}")
+        print(f"{self.colors['primary']}{'='*50}{self.colors['reset']}")
+        
+        for key, description, _ in options:
+            print(f"{self.colors['warning']}[{key}]{self.colors['reset']} {description}")
+        
+        print(f"{self.colors['primary']}{'='*50}{self.colors['reset']}")
+
+    def get_user_input(self, prompt_text: str, completer=None) -> str:
+        """Get user input with optional completion"""
+        try:
+            if completer:
+                return prompt(
+                    HTML(f"<ansicyan>[?]</ansicyan> {prompt_text}"),
+                    completer=completer,
+                    style=custom_style
+                ).strip()
+            else:
+                return prompt(
+                    HTML(f"<ansicyan>[?]</ansicyan> {prompt_text}"),
+                    style=custom_style
+                ).strip()
+        except KeyboardInterrupt:
+            return ""
+
+    def pause(self, message: str = "Press Enter to continue..."):
+        """Pause execution and wait for user input"""
+        try:
+            self.get_user_input(message)
+        except KeyboardInterrupt:
+            pass
+
+    def check_python_package(self, package: str) -> bool:
+        """Check if a Python package is installed"""
+        return importlib.util.find_spec(package) is not None
+
+    def install_python_package(self, package: str) -> bool:
+        """Install a Python package"""
+        try:
+            self.print_status_bar(f"Installing {package}...", "INFO")
+            subprocess.check_call([
+                sys.executable, '-m', 'pip', 'install', package
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.print_status_bar(f"{package} installed successfully", "SUCCESS")
+            return True
+        except subprocess.CalledProcessError:
+            self.print_status_bar(f"Failed to install {package}", "ERROR")
+            return False
+
+    def run_arsenal(self):
+        """Run the bug hunting arsenal"""
+        self.clear_screen()
+        self.print_banner()
+        
+        if not self.arsenal_script.exists():
+            self.print_status_bar("Bug Hunting Arsenal script not found!", "ERROR")
+            self.pause()
+            return
+        
+        # Get target domain
+        target = self.get_user_input("Enter target domain (e.g., example.com): ")
+        if not target:
+            self.print_status_bar("No target specified", "WARNING")
+            self.pause()
+            return
+        
+        # Get output directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_output = f"reports/{timestamp}_{target}"
+        output = self.get_user_input(f"Output directory (Enter for {default_output}): ")
+        if not output:
+            output = default_output
+        
+        # Get additional options
+        email = self.get_user_input("Email for EmailRep enrichment (optional): ")
+        verbose = self.get_user_input("Enable verbose output? (y/N): ").lower() == 'y'
+        json_output = self.get_user_input("Output JSON to stdout? (y/N): ").lower() == 'y'
+        
+        # Build command
+        cmd = [sys.executable, str(self.arsenal_script), "-t", target, "-o", output]
+        
+        if email:
+            cmd.extend(["--email", email])
+        if verbose:
+            cmd.append("-v")
+        if json_output:
+            cmd.append("--json")
+        
+        # Execute
+        self.print_status_bar(f"Starting Bug Hunting Arsenal for {target}...", "INFO")
+        print(f"\n{self.colors['info']}Command: {' '.join(cmd)}{self.colors['reset']}\n")
+        
+        try:
+            result = subprocess.run(cmd, cwd=self.project_root)
+            if result.returncode == 0:
+                self.print_status_bar("Bug Hunting Arsenal completed successfully!", "SUCCESS")
+            else:
+                self.print_status_bar("Bug Hunting Arsenal failed", "ERROR")
+        except KeyboardInterrupt:
+            self.print_status_bar("Operation interrupted by user", "WARNING")
+        except Exception as e:
+            self.print_status_bar(f"Error: {e}", "ERROR")
+        
+        self.pause()
+
+    def setup_python_env(self):
+        """Setup Python virtual environment"""
+        self.clear_screen()
+        self.print_banner()
+        self.print_status_bar("Setting up Python virtual environment...", "INFO")
+        
+        if self.venv_dir.exists():
+            response = self.get_user_input(
+                "Virtual environment already exists. Recreate? (y/N): "
+            ).lower()
+            if response != 'y':
+                self.print_status_bar("Using existing virtual environment", "INFO")
+                return
+            shutil.rmtree(self.venv_dir)
+        
+        try:
+            # Create virtual environment
+            subprocess.check_call([
+                sys.executable, '-m', 'venv', str(self.venv_dir)
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            self.print_status_bar("Virtual environment created successfully", "SUCCESS")
+            
+            # Install requirements if available
+            if self.requirements_file.exists():
+                self.print_status_bar("Installing requirements...", "INFO")
+                pip_cmd = str(self.venv_dir / "bin" / "pip") if os.name != 'nt' else str(self.venv_dir / "Scripts" / "pip.exe")
+                subprocess.check_call([
+                    pip_cmd, "install", "-r", str(self.requirements_file)
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self.print_status_bar("Requirements installed successfully", "SUCCESS")
+            
+        except subprocess.CalledProcessError as e:
+            self.print_status_bar(f"Failed to setup environment: {e}", "ERROR")
+        
+        self.pause()
+
+    def install_dependencies(self):
+        """Install Python dependencies"""
+        self.clear_screen()
+        self.print_banner()
+        
+        if not self.requirements_file.exists():
+            self.print_status_bar("requirements.txt not found!", "ERROR")
+            self.pause()
+            return
+        
+        required_packages = [
+            "aiofiles", "aiohttp", "crawl4ai", "dnspython", 
+            "python-whois", "requests", "beautifulsoup4", 
+            "colorama", "urllib3", "lxml", "pyyaml"
+        ]
+        
+        self.print_status_bar("Checking and installing dependencies...", "INFO")
+        
+        for package in required_packages:
+            if not self.check_python_package(package):
+                self.install_python_package(package)
+            else:
+                self.print_status_bar(f"{package} already installed", "SUCCESS")
+        
+        self.pause()
+
+    def install_security_tools(self):
+        """Install security tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        tools = [
+            ("subfinder", "Subdomain enumeration"),
+            ("httpx", "HTTP probing"),
+            ("nuclei", "Vulnerability scanning"),
+            ("nmap", "Network scanning"),
+            ("whatweb", "Technology detection"),
+            ("katana", "Web crawling"),
+            ("waymore", "URL discovery")
+        ]
+        
+        self.print_status_bar("Checking security tools...", "INFO")
+        
+        for tool, description in tools:
+            if shutil.which(tool):
+                self.print_status_bar(f"✓ {tool}: {description}", "SUCCESS")
+            else:
+                self.print_status_bar(f"✗ {tool}: {description} (not found)", "WARNING")
+        
+        self.print_status_bar("Use the setup script for automatic tool installation", "INFO")
+        self.pause()
+
+    def run_tests(self):
+        """Run tests"""
+        self.clear_screen()
+        self.print_banner()
+        
+        test_dir = self.project_root / "tests"
+        if not test_dir.exists():
+            self.print_status_bar("Tests directory not found", "WARNING")
+            self.pause()
+            return
+        
+        self.print_status_bar("Running tests...", "INFO")
+        
+        try:
+            result = subprocess.run([
+                sys.executable, "-m", "pytest", str(test_dir), "-v"
+            ], cwd=self.project_root)
+            
+            if result.returncode == 0:
+                self.print_status_bar("All tests passed!", "SUCCESS")
+            else:
+                self.print_status_bar("Some tests failed", "WARNING")
+        except Exception as e:
+            self.print_status_bar(f"Error running tests: {e}", "ERROR")
+        
+        self.pause()
+
+    def check_system_status(self):
+        """Check system status"""
+        self.clear_screen()
+        self.print_banner()
+        
+        print(f"{self.colors['primary']}System Status Check{self.colors['reset']}\n")
+        
+        # Check Python
+        python_version = sys.version.split()[0]
+        print(f"{self.colors['success']}✓ Python: {python_version}{self.colors['reset']}")
+        
+        # Check virtual environment
+        if self.venv_dir.exists():
+            print(f"{self.colors['success']}✓ Virtual Environment: {self.venv_dir}{self.colors['reset']}")
         else:
-            print(f"{Fore.YELLOW}[!] {package} is missing. Installing...")
-            install_package(package)
+            print(f"{self.colors['warning']}✗ Virtual Environment: Not found{self.colors['reset']}")
+        
+        # Check requirements
+        if self.requirements_file.exists():
+            print(f"{self.colors['success']}✓ Requirements: {self.requirements_file}{self.colors['reset']}")
+        else:
+            print(f"{self.colors['warning']}✗ Requirements: Not found{self.colors['reset']}")
+        
+        # Check arsenal script
+        if self.arsenal_script.exists():
+            print(f"{self.colors['success']}✓ Arsenal Script: {self.arsenal_script}{self.colors['reset']}")
+        else:
+            print(f"{self.colors['error']}✗ Arsenal Script: Not found{self.colors['reset']}")
+        
+        # Check reports directory
+        if self.reports_dir.exists():
+            print(f"{self.colors['success']}✓ Reports Directory: {self.reports_dir}{self.colors['reset']}")
+        else:
+            print(f"{self.colors['info']}ℹ Reports Directory: Will be created automatically{self.colors['reset']}")
+        
+        self.pause()
 
-def load_config():
-    return ["colorama", "prompt_toolkit"]
+    def reports_menu(self):
+        """Reports menu"""
+        self.clear_screen()
+        self.print_banner()
+        
+        if not self.reports_dir.exists():
+            self.print_status_bar("No reports directory found", "INFO")
+            self.pause()
+            return
+        
+        reports = list(self.reports_dir.glob("*"))
+        if not reports:
+            self.print_status_bar("No reports found", "INFO")
+            self.pause()
+            return
+        
+        print(f"{self.colors['primary']}Available Reports{self.colors['reset']}\n")
+        
+        for i, report in enumerate(reports, 1):
+            if report.is_dir():
+                summary_file = report / "summary.json"
+                if summary_file.exists():
+                    try:
+                        with open(summary_file) as f:
+                            data = json.load(f)
+                            target = data.get('targets', ['Unknown'])[0]
+                            timestamp = data.get('timestamp', 'Unknown')
+                            stats = data.get('stats', {})
+                            subdomains = stats.get('subdomains_found', 0)
+                            urls = stats.get('urls_discovered', 0)
+                            
+                        print(f"{self.colors['warning']}[{i}]{self.colors['reset']} {report.name}")
+                        print(f"    Target: {target}")
+                        print(f"    Subdomains: {subdomains}")
+                        print(f"    URLs: {urls}")
+                        print(f"    Date: {timestamp[:10]}")
+                        print()
+                    except:
+                        print(f"{self.colors['warning']}[{i}]{self.colors['reset']} {report.name} (corrupted)")
+                else:
+                    print(f"{self.colors['warning']}[{i}]{self.colors['reset']} {report.name} (no summary)")
+        
+        self.pause()
 
-def handle_interrupt(signal, frame):
-    print(f"\n{Fore.RED}[!] Program interrupted. Exiting...")
-    sys.exit(0)
+    def tools_menu(self):
+        """Tools management menu"""
+        while True:
+            self.clear_screen()
+            self.print_banner()
+            self.print_menu("Tool Management", self.tools_options)
+            
+            choice = self.get_user_input("Choose an option: ")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.subdomain_tools()
+            elif choice == "2":
+                self.url_discovery_tools()
+            elif choice == "3":
+                self.vuln_scanning_tools()
+            elif choice == "4":
+                self.tech_detection_tools()
+            elif choice == "5":
+                self.payload_tools()
+            else:
+                self.print_status_bar("Invalid option", "ERROR")
+                self.pause()
 
-def create_ScriptoSVG_file(filename, payload):
-    svg_content = f'''<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg" width="200" height="100">
-  <script type="text/javascript">
-    {payload}
-  </script>
-  <text x="6" y="50" font-family="Arial" font-size="16" fill="black">Created by: Anom5x</text>
-</svg>
-'''
-    try:
-        with open(filename, "w") as file:
-            file.write(svg_content)
-        print(f"{Fore.GREEN}[+] Created the SVG file: {filename}")
-    except IOError as e:
-        print(f"{Fore.RED}[!] Error creating SVG file: {e}")
+    def subdomain_tools(self):
+        """Subdomain enumeration tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        tools = [
+            ("subfinder", "Fast subdomain enumeration"),
+            ("assetfinder", "Find subdomains via various sources"),
+            ("amass", "Comprehensive subdomain enumeration"),
+            ("crt.sh", "Certificate transparency search")
+        ]
+        
+        print(f"{self.colors['primary']}Subdomain Enumeration Tools{self.colors['reset']}\n")
+        
+        for tool, description in tools:
+            if shutil.which(tool):
+                print(f"{self.colors['success']}✓ {tool}: {description}{self.colors['reset']}")
+            else:
+                print(f"{self.colors['warning']}✗ {tool}: {description} (not installed){self.colors['reset']}")
+        
+        self.pause()
 
-def create_ScriptoPDF_pdf(filename, payload):
-    pdf_content = f'''%PDF-1.7
-%âãÏÓ
-1 0 obj
-<</Type/Catalog/Pages 2 0 R/OpenAction 3 0 R/Metadata 4 0 R>>
-endobj
-2 0 obj
-<</Type/Pages/Kids[5 0 R]/Count 1>>
-endobj
-3 0 obj
-<</JS({payload}\n)/S/JavaScript/Type/Action>>
-endobj
-4 0 obj
-<</Type/Metadata/Subtype/XML/Length 0>>
-stream
-endstream
-endobj
-5 0 obj
-<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 6 0 R/Resources<</ProcSet[/PDF /Text]>> >>
-endobj
-6 0 obj
-<</Length 44>>
-stream
-/Courier 12 Tf
-100 700 Td
-(Created by Anom5x) Tj
-ET
-endstream
-endobj
-xref
-0 7
-0000000000 65535 f
-0000000015 00000 n
-0000000074 00000 n
-0000000128 00000 n
-0000000185 00000 n
-0000000231 00000 n
-0000000318 00000 n
-trailer
-<</Size 7/Root 1 0 R>>
-startxref
-382
-%%EOF
-'''
-    try:
-        with open(filename, "wb") as file:
-            file.write(pdf_content.encode('latin1'))
-        print(f"{Fore.GREEN}[+] Created the PDF file: {filename}")
-    except IOError as e:
-        print(f"{Fore.RED}[!] Error creating PDF file: {e}")
+    def url_discovery_tools(self):
+        """URL discovery tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        tools = [
+            ("katana", "Fast web crawling"),
+            ("waymore", "Archive.org URL discovery"),
+            ("gau", "Get All URLs from various sources"),
+            ("httpx", "HTTP probing and validation")
+        ]
+        
+        print(f"{self.colors['primary']}URL Discovery Tools{self.colors['reset']}\n")
+        
+        for tool, description in tools:
+            if shutil.which(tool):
+                print(f"{self.colors['success']}✓ {tool}: {description}{self.colors['reset']}")
+            else:
+                print(f"{self.colors['warning']}✗ {tool}: {description} (not installed){self.colors['reset']}")
+        
+        self.pause()
 
-def create_ScriptoHTML_file(filename: str, payload: str) -> None:
-    html_content = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Created by Anom5x</title>
-  <style>
-    body {{ font-family: Arial, Helvetica, sans-serif; margin: 2rem; }}
-  </style>
-  <script>
-  {payload}
-  </script>
-  </head>
-<body>
-  <h1>Created by: Anom5x</h1>
-  <p>Payload embedded in script block.</p>
-</body>
-</html>
-'''
-    try:
-        with open(filename, "w", encoding="utf-8") as file:
-            file.write(html_content)
-        print(f"{Fore.GREEN}[+] Created the HTML file: {filename}")
-    except IOError as e:
-        print(f"{Fore.RED}[!] Error creating HTML file: {e}")
+    def vuln_scanning_tools(self):
+        """Vulnerability scanning tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        tools = [
+            ("nuclei", "Fast vulnerability scanner"),
+            ("nmap", "Network security scanner"),
+            ("sqlmap", "SQL injection scanner"),
+            ("nikto", "Web server scanner")
+        ]
+        
+        print(f"{self.colors['primary']}Vulnerability Scanning Tools{self.colors['reset']}\n")
+        
+        for tool, description in tools:
+            if shutil.which(tool):
+                print(f"{self.colors['success']}✓ {tool}: {description}{self.colors['reset']}")
+            else:
+                print(f"{self.colors['warning']}✗ {tool}: {description} (not installed){self.colors['reset']}")
+        
+        self.pause()
 
-def print_banner() -> None:
-    title = "Scripto Tool Suite"
-    subtitle = "by Anom5x"
-    bar = f"{Fore.MAGENTA}{'=' * (len(title) + 12)}{Style.RESET_ALL}"
-    print(bar)
-    print(f"{Fore.CYAN}*** {title} ***{Style.RESET_ALL}")
-    print(f"{Fore.BLUE}{subtitle}{Style.RESET_ALL}")
-    print(bar)
+    def tech_detection_tools(self):
+        """Technology detection tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        tools = [
+            ("whatweb", "Web application fingerprinting"),
+            ("wappalyzer", "Technology detection"),
+            ("httpx", "HTTP technology detection")
+        ]
+        
+        print(f"{self.colors['primary']}Technology Detection Tools{self.colors['reset']}\n")
+        
+        for tool, description in tools:
+            if shutil.which(tool):
+                print(f"{self.colors['success']}✓ {tool}: {description}{self.colors['reset']}")
+            else:
+                print(f"{self.colors['warning']}✗ {tool}: {description} (not installed){self.colors['reset']}")
+        
+        self.pause()
 
-def pause(message: str = f"{Fore.YELLOW}Press Enter to return to menu...") -> None:
-    try:
-        prompt(HTML("<ansiyellow>\n[↩]</ansiyellow> " + message))
-    except KeyboardInterrupt:
-        pass
+    def payload_tools(self):
+        """Payload generation tools"""
+        self.clear_screen()
+        self.print_banner()
+        
+        payload_dir = self.tools_dir / "payloads"
+        if payload_dir.exists():
+            payload_files = list(payload_dir.glob("*.txt"))
+            print(f"{self.colors['primary']}Available Payload Files{self.colors['reset']}\n")
+            
+            for i, payload_file in enumerate(payload_files, 1):
+                size = payload_file.stat().st_size
+                print(f"{self.colors['warning']}[{i}]{self.colors['reset']} {payload_file.name} ({size} bytes)")
+        else:
+            self.print_status_bar("Payloads directory not found", "WARNING")
+        
+        self.pause()
 
-def prompt_filepath(message: str) -> str:
-    completer = PathCompleter(expanduser=True)
-    return prompt(HTML(f"<ansicyan>[?]</ansicyan> {message}"), completer=completer).strip().strip('"')
+    def documentation_menu(self):
+        """Documentation menu"""
+        self.clear_screen()
+        self.print_banner()
+        
+        docs = [
+            ("README.md", "Main documentation"),
+            ("docs/TOOLS.md", "Tools documentation"),
+            ("install/", "Installation guides"),
+            ("scripts/recon/", "Reconnaissance scripts")
+        ]
+        
+        print(f"{self.colors['primary']}Documentation{self.colors['reset']}\n")
+        
+        for doc, description in docs:
+            doc_path = self.project_root.parent.parent / doc
+            if doc_path.exists():
+                print(f"{self.colors['success']}✓ {doc}: {description}{self.colors['reset']}")
+            else:
+                print(f"{self.colors['warning']}✗ {doc}: {description} (not found){self.colors['reset']}")
+        
+        self.pause()
 
-def is_exiftool_available() -> bool:
-    return shutil.which('exiftool') is not None
+    def config_menu(self):
+        """Configuration menu"""
+        self.clear_screen()
+        self.print_banner()
+        
+        print(f"{self.colors['primary']}Configuration{self.colors['reset']}\n")
+        
+        # Show current configuration
+        config = {
+            "Project Root": str(self.project_root),
+            "Virtual Environment": str(self.venv_dir),
+            "Reports Directory": str(self.reports_dir),
+            "Tools Directory": str(self.tools_dir),
+            "Python Version": sys.version.split()[0]
+        }
+        
+        for key, value in config.items():
+            print(f"{self.colors['info']}{key}:{self.colors['reset']} {value}")
+        
+        self.pause()
 
-def advise_install_exiftool() -> None:
-    print(f"{Fore.YELLOW}[!] exiftool not found in PATH.")
-    print("- On Debian/Ubuntu: sudo apt-get update && sudo apt-get install -y exiftool")
-    print("- On macOS (Homebrew): brew install exiftool")
-    print("- On Windows: download from 'https://exiftool.org/' and add to PATH")
+    def setup_menu(self):
+        """Setup menu"""
+        while True:
+            self.clear_screen()
+            self.print_banner()
+            self.print_menu("Setup & Installation", self.setup_options)
+            
+            choice = self.get_user_input("Choose an option: ")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.setup_python_env()
+            elif choice == "2":
+                self.install_dependencies()
+            elif choice == "3":
+                self.install_security_tools()
+            elif choice == "4":
+                self.run_tests()
+            elif choice == "5":
+                self.check_system_status()
+            else:
+                self.print_status_bar("Invalid option", "ERROR")
+                self.pause()
 
-def run_exiftool(args: list[str]) -> tuple[int, str, str]:
-    try:
-        process = subprocess.run(["exiftool", *args], capture_output=True, text=True)
-        return process.returncode, process.stdout, process.stderr
-    except FileNotFoundError:
-        return 127, "", "exiftool not found"
+    def exit_program(self):
+        """Exit the program"""
+        self.clear_screen()
+        self.print_banner()
+        self.print_status_bar("Thank you for using Bug Hunting Arsenal!", "SUCCESS")
+        self.print_status_bar("Stay safe and keep hunting! 🛡️", "INFO")
+        sys.exit(0)
 
-def exif_view_metadata() -> None:
-    if not is_exiftool_available():
-        advise_install_exiftool()
-        return
-    file_path = prompt_filepath("Enter file to inspect: ")
-    if not file_path:
-        print(f"{Fore.RED}[!] No file provided.")
-        return
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    code, out, err = run_exiftool(["-json", "-a", "-u", "-g1", file_path])
-    if code != 0:
-        print(f"{Fore.RED}[!] exiftool error: {err.strip()}")
-        return
-    try:
-        data = json.loads(out)
-        pretty = json.dumps(data, indent=2, ensure_ascii=False)
-        print(pretty)
-    except json.JSONDecodeError:
-        print(out)
-
-def exif_write_tag() -> None:
-    if not is_exiftool_available():
-        advise_install_exiftool()
-        return
-    file_path = prompt_filepath("Enter file to modify: ")
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    tag = prompt(HTML("<ansicyan>[?]</ansicyan> Enter tag (e.g., <ansigreen>Comment</ansigreen>): ")).strip()
-    value = prompt(HTML("<ansicyan>[?]</ansicyan> Enter value: ")).strip()
-    if not tag:
-        print(f"{Fore.RED}[!] Tag cannot be empty.")
-        return
-    code, out, err = run_exiftool([f"-{tag}={value}", "-overwrite_original", file_path])
-    if code == 0:
-        print(f"{Fore.GREEN}[+] Updated {tag} on {file_path}")
-        print(out.strip())
-    else:
-        print(f"{Fore.RED}[!] exiftool error: {err.strip()}")
-
-def exif_strip_metadata() -> None:
-    if not is_exiftool_available():
-        advise_install_exiftool()
-        return
-    file_path = prompt_filepath("Enter file to strip metadata from: ")
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    code, out, err = run_exiftool(["-overwrite_original", "-all=", file_path])
-    if code == 0:
-        print(f"{Fore.GREEN}[+] Stripped all metadata from {file_path}")
-        print(out.strip())
-    else:
-        print(f"{Fore.RED}[!] exiftool error: {err.strip()}")
-
-def exif_batch_strip() -> None:
-    if not is_exiftool_available():
-        advise_install_exiftool()
-        return
-    dir_path = prompt_filepath("Enter directory to process recursively: ")
-    if not os.path.isdir(dir_path):
-        print(f"{Fore.RED}[!] Directory not found: {dir_path}")
-        return
-    extensions = prompt(HTML("<ansicyan>[?]</ansicyan> File extensions to target (comma-separated, e.g., jpg,png,mp4). Leave blank for all: ")).strip()
-    args = ["-r", "-overwrite_original", "-all=", dir_path]
-    if extensions:
-        for ext in [e.strip().lstrip('.').lower() for e in extensions.split(',') if e.strip()]:
-            args[0:0] = ["-ext", ext]
-    code, out, err = run_exiftool(args)
-    if code == 0:
-        print(f"{Fore.GREEN}[+] Batch strip completed")
-        print(out.strip())
-    else:
-        print(f"{Fore.RED}[!] exiftool error: {err.strip()}")
-
-def file_info() -> None:
-    file_path = prompt_filepath("Enter file to analyze: ")
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    size_bytes = os.path.getsize(file_path)
-    mime_type, _ = mimetypes.guess_type(file_path)
-    md5_hash = hashlib.md5()
-    sha256_hash = hashlib.sha256()
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(8192), b''):
-            md5_hash.update(chunk)
-            sha256_hash.update(chunk)
-    print(f"{Fore.CYAN}Path{Style.RESET_ALL}: {file_path}")
-    print(f"{Fore.CYAN}Size{Style.RESET_ALL}: {size_bytes} bytes")
-    print(f"{Fore.CYAN}MIME{Style.RESET_ALL}: {mime_type or 'unknown'}")
-    print(f"{Fore.CYAN}MD5 {Style.RESET_ALL}: {md5_hash.hexdigest()}")
-    print(f"{Fore.CYAN}SHA256{Style.RESET_ALL}: {sha256_hash.hexdigest()}")
-
-def base64_encode_file() -> None:
-    import base64
-    file_path = prompt_filepath("File to Base64-encode: ")
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    default_out = str(Path(file_path).with_suffix(Path(file_path).suffix + ".b64.txt"))
-    out_path = prompt(HTML(f"<ansicyan>[?]</ansicyan> Output file (Enter for default: <ansigreen>{default_out}</ansigreen>): ")).strip() or default_out
-    with open(file_path, 'rb') as fin, open(out_path, 'wb') as fout:
-        base64.encode(fin, fout)
-    print(f"{Fore.GREEN}[+] Wrote Base64 to {out_path}")
-
-def base64_decode_file() -> None:
-    import base64
-    file_path = prompt_filepath("Base64 text file to decode: ")
-    if not os.path.isfile(file_path):
-        print(f"{Fore.RED}[!] File not found: {file_path}")
-        return
-    default_out = str(Path(file_path).with_suffix(""))
-    out_path = prompt(HTML(f"<ansicyan>[?]</ansicyan> Output binary file (Enter for default: <ansigreen>{default_out}</ansigreen>): ")).strip() or default_out
-    with open(file_path, 'rb') as fin, open(out_path, 'wb') as fout:
-        base64.decode(fin, fout)
-    print(f"{Fore.GREEN}[+] Decoded to {out_path}")
-
-def show_menu():
-    clear_screen()
-    print_banner()
-    print(f"{Fore.YELLOW}[1]{Style.RESET_ALL} ScriptoSVG: Create SVG with embedded JavaScript")
-    print(f"{Fore.YELLOW}[2]{Style.RESET_ALL} ScriptoPDF: Create PDF with embedded JavaScript")
-    print(f"{Fore.YELLOW}[3]{Style.RESET_ALL} ScriptoHTML: Create HTML with embedded JavaScript")
-    print(f"{Fore.YELLOW}[4]{Style.RESET_ALL} ExifTool: View/Write/Strip metadata")
-    print(f"{Fore.YELLOW}[5]{Style.RESET_ALL} Utilities: File info, Base64 encode/decode")
-    print(f"{Fore.YELLOW}[0]{Style.RESET_ALL} Exit")
-
-def show_exif_menu() -> str:
-    print(f"\n{Fore.CYAN}ExifTool Operations{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[1]{Style.RESET_ALL} View metadata (JSON)")
-    print(f"{Fore.YELLOW}[2]{Style.RESET_ALL} Write a tag (key=value)")
-    print(f"{Fore.YELLOW}[3]{Style.RESET_ALL} Strip all metadata (single file)")
-    print(f"{Fore.YELLOW}[4]{Style.RESET_ALL} Batch strip metadata (directory)")
-    print(f"{Fore.YELLOW}[0]{Style.RESET_ALL} Back")
-    return prompt(HTML("<ansicyan>\n[?]</ansicyan> Choose an option: ")).strip()
-
-def show_utils_menu() -> str:
-    print(f"\n{Fore.CYAN}Utilities{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[1]{Style.RESET_ALL} File info (MIME, hashes)")
-    print(f"{Fore.YELLOW}[2]{Style.RESET_ALL} Base64 encode file")
-    print(f"{Fore.YELLOW}[3]{Style.RESET_ALL} Base64 decode file")
-    print(f"{Fore.YELLOW}[0]{Style.RESET_ALL} Back")
-    return prompt(HTML("<ansicyan>\n[?]</ansicyan> Choose an option: ")).strip()
+    def run(self):
+        """Main menu loop"""
+        signal.signal(signal.SIGINT, lambda sig, frame: self.exit_program())
+        
+        while True:
+            self.clear_screen()
+            self.print_banner()
+            self.print_menu("Main Menu", self.main_menu_options)
+            
+            choice = self.get_user_input("Choose an option: ")
+            
+            # Find and execute the selected option
+            for key, description, func in self.main_menu_options:
+                if choice == key:
+                    if func:
+                        func()
+                    break
+            else:
+                self.print_status_bar("Invalid option", "ERROR")
+                self.pause()
 
 def main():
-    signal.signal(signal.SIGINT, handle_interrupt)
-    
-    clear_screen()
-    print(f"{Fore.YELLOW}[i] Checking for required packages...\n")
-    
-    required_packages = load_config()
-    check_and_install_packages(required_packages)
-
-    time.sleep(1)
-    
-    while True:
-        show_menu()
-        option = prompt(HTML("<ansicyan>\n[?]</ansicyan> Choose an option: ")).strip()
-
-        if option == "1":
-            filename = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the name for the SVG file (Enter for default: <ansigreen>ScriptoSVG.svg</ansigreen>): ")).strip() or "ScriptoSVG.svg"
-            payload = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the payload to embed in the SVG (Enter for default: <ansigreen>alert('Anom5x');</ansigreen>): ")).strip() or "alert('AnonKryptiQuz');"
-            create_ScriptoSVG_file(filename, payload)
-            pause()
-
-        elif option == "2":
-            filename = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the name for the PDF file (Enter for default: <ansigreen>ScriptoPDF.pdf</ansigreen>): ")).strip() or "ScriptoPDF.pdf"
-            payload = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the payload to embed in the PDF (Enter for default: <ansigreen>app.alert('Anom5x');</ansigreen>): ")).strip() or "app.alert('AnonKryptiQuz');"
-            create_ScriptoPDF_pdf(filename, payload)
-            pause()
-
-        elif option == "3":
-            filename = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the name for the HTML file (Enter for default: <ansigreen>ScriptoHTML.html</ansigreen>): ")).strip() or "ScriptoHTML.html"
-            payload = prompt(HTML(f"<ansicyan>[?]</ansicyan> Enter the payload to embed in the HTML (Enter for default: <ansigreen>alert('Anom5x');</ansigreen>): ")).strip() or "alert('AnonKryptiQuz');"
-            create_ScriptoHTML_file(filename, payload)
-            pause()
-
-        elif option == "4":
-            while True:
-                sub = show_exif_menu()
-                if sub == "1":
-                    exif_view_metadata()
-                    pause()
-                elif sub == "2":
-                    exif_write_tag()
-                    pause()
-                elif sub == "3":
-                    exif_strip_metadata()
-                    pause()
-                elif sub == "4":
-                    exif_batch_strip()
-                    pause()
-                elif sub == "0":
-                    break
-                else:
-                    print(f"{Fore.RED}[!] Invalid option.")
-                    pause()
-
-        elif option == "5":
-            while True:
-                sub = show_utils_menu()
-                if sub == "1":
-                    file_info()
-                    pause()
-                elif sub == "2":
-                    base64_encode_file()
-                    pause()
-                elif sub == "3":
-                    base64_decode_file()
-                    pause()
-                elif sub == "0":
-                    break
-                else:
-                    print(f"{Fore.RED}[!] Invalid option.")
-                    pause()
-
-        elif option == "0":
-            print(f"{Fore.GREEN}[+] Exiting the program. Goodbye!")
-            break
-
-        else:
-            print(f"{Fore.RED}[!] Wrong option selected. Press Enter to try again.")
-            prompt()
+    """Main entry point"""
+    try:
+        menu = BugHuntingMenu()
+        menu.run()
+    except KeyboardInterrupt:
+        print(f"\n{Fore.RED}[!] Interrupted by user{Style.RESET_ALL}")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n{Fore.RED}[!] Error: {e}{Style.RESET_ALL}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print(f"{Fore.RED}\n[!] Operation interrupted. Exiting...")
+    main()

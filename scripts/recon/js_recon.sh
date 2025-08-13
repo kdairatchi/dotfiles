@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Ultimate JS Recon & Secret Finder
+# JS Recon & Secret Finder
 # Combines subfinder/httpx/hakrawler/jsninja with gauplus/fff/gf/amass
-# Author: Your Name
+# Author: kdairatchi
 # Version: 3.0
 
 # Colors
@@ -22,7 +22,7 @@ cat << "EOF"
  |____/_/     |____/|_____||_| \_\_| \_\_____|
 EOF
 echo -e "${NC}"
-echo -e "${YELLOW}Ultimate JavaScript Recon & Secret Finder${NC}"
+echo -e "${YELLOW}JavaScript Recon & Secret Finder${NC}"
 echo -e "${YELLOW}----------------------------------------${NC}"
 echo ""
 
