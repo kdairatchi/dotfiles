@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o pipefail
+set -euo pipefail  # Enhanced error handling
 
 # -------------------------------------------------------------
 # Common framework: verbosity, GNU parallel, monitoring, jobs
@@ -38,13 +38,13 @@ calc_jobs() {
   cap=$(( (fd_limit * 70) / 100 ))
   if (( cap < 32 )); then cap=32; fi
   if (( target > cap )); then target=$cap; fi
-  # Hard cap to avoid overload; WSL boxes may tolerate ~9000+.
-  if (( target > 12000 )); then target=12000; fi
+  # Hard cap to avoid overload; updated to 9000 for maximum performance
+  if (( target > 9000 )); then target=9000; fi
   echo "$target"
 }
 
-# GNU parallel wrapper (mirrors user shell alias)
-P() { parallel --bar -j"${J:-10}" "$@"; }
+# GNU parallel wrapper (mirrors user shell alias) - enhanced with calc_jobs default
+P() { parallel --bar -j"${J:-$(calc_jobs)}" "$@"; }
 
 start_monitor() {
   command -v watch >/dev/null 2>&1 || return 0

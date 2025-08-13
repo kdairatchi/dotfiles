@@ -17,6 +17,11 @@ main(){
     bash "$ROOT_DIR/install/tools.sh" || warn "Advanced tools finished with warnings"
   fi
 
+  if [ -f "$ROOT_DIR/install/enhanced_setup.sh" ]; then
+    log "Installing enhanced tools..."
+    bash "$ROOT_DIR/install/enhanced_setup.sh" || warn "Advanced tools finished with warnings"
+  fi  
+
   if [ -f "$ROOT_DIR/kda-bootstrap.sh" ]; then
     log "Configuring portable aliases..."
     bash "$ROOT_DIR/kda-bootstrap.sh" --install --yes || warn "Bootstrap finished with warnings"

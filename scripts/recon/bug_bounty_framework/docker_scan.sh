@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o pipefail
+set -euo pipefail  # Enhanced error handling
 
 # -------------------------------------------------------------
 # Common framework: verbosity, monitoring, jobs (for future use)
@@ -23,6 +23,21 @@ USAGE
 
 VERBOSE=false
 MONITOR=false
+
+calc_jobs() {
+  local cpus fd_limit target cap
+  cpus=$(nproc 2>/dev/null || echo 4)
+  fd_limit=$(ulimit -n 2>/dev/null || echo 1024)
+  target=$(( cpus * 64 ))
+  cap=$(( (fd_limit * 70) / 100 ))
+  if (( cap < 32 )); then cap=32; fi
+  if (( target > cap )); then target=$cap; fi
+  if (( target > 9000 )); then target=9000; fi  # Updated to 9000 max parallel jobs
+  echo "$target"
+}
+
+# GNU parallel wrapper with optimized defaults
+P() { parallel --bar -j"${J:-$(calc_jobs)}" "$@"; }
 
 start_monitor() {
   command -v watch >/dev/null 2>&1 || return 0
