@@ -481,6 +481,7 @@ results_menu() {
         echo "7. Clean Old Results"
         echo "8. View Statistics"
         echo "9. Send Report via Email"
+        echo "10. Log Viewer"
         echo "0. Back to Main Menu"
         
         read -p "$(echo -e "${BLUE}\n[+] Select option: ${NC}")" choice
@@ -495,10 +496,20 @@ results_menu() {
             7) clean_old_results ;;
             8) view_statistics ;;
             9) email_report ;;
+            10) log_viewer ;;
             0) break ;;
             *) warn_msg "Invalid option" ;;
         esac
     done
+}
+
+# Log Viewer wrapper
+log_viewer() {
+    if [ -f "$SCRIPT_DIR/log_viewer.sh" ]; then
+        bash "$SCRIPT_DIR/log_viewer.sh"
+    else
+        warn_msg "Log viewer not found at $SCRIPT_DIR/log_viewer.sh"
+    fi
 }
 
 # Subdomain enumeration function

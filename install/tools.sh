@@ -26,17 +26,21 @@ error() {
 install_advanced_go_tools() {
     log "Installing advanced Go tools..."
     
-    go install -v github.com/projectdiscovery/katana/cmd/katana@latest
-    go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
-    go install -v github.com/projectdiscovery/uncover/cmd/uncover@latest
-    go install -v github.com/tomnomnom/gf@latest
-    go install -v github.com/tomnomnom/anew@latest
-    go install -v github.com/tomnomnom/unfurl@latest
-    go install -v github.com/tomnomnom/qsreplace@latest
-    go install -v github.com/lc/gau/v2/cmd/gau@latest
-    go install -v github.com/hakluke/hakrawler@latest
-    go install -v github.com/003random/getJS@latest
-    go install -v github.com/dwisiswant0/urldedupe@latest
+    export GOPATH="${GOPATH:-$HOME/go}"
+    export PATH="$GOPATH/bin:$PATH"
+
+    go install -v github.com/projectdiscovery/katana/cmd/katana@latest || warn "katana failed"
+    go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest || warn "naabu failed"
+    go install -v github.com/projectdiscovery/uncover/cmd/uncover@latest || warn "uncover failed"
+    go install -v github.com/tomnomnom/gf@latest || warn "gf failed"
+    go install -v github.com/tomnomnom/anew@latest || warn "anew failed"
+    go install -v github.com/tomnomnom/unfurl@latest || warn "unfurl failed"
+    go install -v github.com/tomnomnom/qsreplace@latest || warn "qsreplace failed"
+    go install -v github.com/lc/gau/v2/cmd/gau@latest || warn "gau failed"
+    go install -v github.com/hakluke/hakrawler@latest || warn "hakrawler failed"
+    go install -v github.com/003random/getJS@latest || warn "getJS failed"
+    go install -v github.com/dwisiswant0/urldedupe@latest || warn "urldedupe failed"
+    go install -v github.com/jaeles-project/gospider@latest || warn "gospider failed"
 }
 
 # Install specialized Python tools
@@ -117,6 +121,16 @@ install_utilities() {
     # Install ripgrep
     if ! command -v rg &> /dev/null; then
         sudo apt install -y ripgrep 2>/dev/null || warn "Failed to install ripgrep"
+    fi
+
+    # Install gron for JSON grepping
+    if ! command -v gron &> /dev/null; then
+        sudo apt install -y gron 2>/dev/null || true
+    fi
+
+    # Install jq if missing
+    if ! command -v jq &> /dev/null; then
+        sudo apt install -y jq 2>/dev/null || true
     fi
 }
 

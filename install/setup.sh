@@ -47,7 +47,14 @@ install_system_deps() {
         jq \
         lynx \
         zsh \
-        fonts-powerline
+        fonts-powerline \
+        ripgrep \
+        net-tools \
+        dnsutils \
+        whois \
+        nmap \
+        openssl \
+        unzip
 }
 
 # Install Oh My Zsh and Powerlevel10k
@@ -75,20 +82,24 @@ install_go_tools() {
     log "Installing Go-based security tools..."
     
     # Set up Go environment
-    export GOROOT=/usr/local/go
-    export GOPATH=$HOME/go
-    export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+    # Detect Go paths robustly
+    if command -v go >/dev/null 2>&1; then
+        export GOPATH="${GOPATH:-$HOME/go}"
+        export PATH="$GOPATH/bin:$PATH"
+    else
+        warn "Go is not installed via PATH. Installing golang-go package should provide 'go'."
+    fi
     
     mkdir -p $GOPATH/bin
     
     # Install tools
-    go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-    go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-    go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
-    go install -v github.com/tomnomnom/waybackurls@latest
-    go install -v github.com/tomnomnom/assetfinder@latest
-    go install -v github.com/ffuf/ffuf@latest
-    go install -v github.com/hahwul/dalfox/v2@latest
+    go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest || warn "subfinder install failed"
+    go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest || warn "httpx install failed"
+    go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest || warn "nuclei install failed"
+    go install -v github.com/tomnomnom/waybackurls@latest || warn "waybackurls install failed"
+    go install -v github.com/tomnomnom/assetfinder@latest || warn "assetfinder install failed"
+    go install -v github.com/ffuf/ffuf@latest || warn "ffuf install failed"
+    go install -v github.com/hahwul/dalfox/v2@latest || warn "dalfox install failed"
 }
 
 # Install Python tools
@@ -137,13 +148,33 @@ install_nuclei_templates() {
 copy_tools() {
     log "Copying scripts and tools..."
     
-    # Copy scripts to home directory
-    cp -r scripts/* $HOME/scripts/ 2>/dev/null || true
-    cp -r tools/* $HOME/tools/ 2>/dev/null || true
-    
+    # Ensure destinations
+    mkdir -p "$HOME/scripts" "$HOME/tools" "$HOME/wordlists" "$HOME/tools/payloads"
+
+    # Copy repo scripts into ~/scripts
+    if [ -d "scripts" ]; then
+      cp -r scripts/* "$HOME/scripts/" 2>/dev/null || true
+    fi
+
+    # Flatten tools: copy contents of tools/tools into ~/tools
+    if [ -d "tools/tools" ]; then
+      cp -r tools/tools/* "$HOME/tools/" 2>/dev/null || true
+    fi
+
+    # Wordlists go to ~/wordlists
+    if [ -d "tools/wordlists" ]; then
+      cp -r tools/wordlists/* "$HOME/wordlists/" 2>/dev/null || true
+    fi
+
+    # Payloads into ~/tools/payloads
+    if [ -d "tools/payloads" ]; then
+      cp -r tools/payloads/* "$HOME/tools/payloads/" 2>/dev/null || true
+    fi
+
     # Make scripts executable
-    find $HOME/scripts -name "*.sh" -exec chmod +x {} \;
-    find $HOME/scripts -name "*.py" -exec chmod +x {} \;
+    find "$HOME/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    find "$HOME/scripts" -type f -name "*.py" -exec chmod +x {} \; 2>/dev/null || true
+    find "$HOME/tools" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 }
 
 # Main installation function
@@ -158,6 +189,18 @@ main() {
     install_python_tools
     link_configs
     copy_tools
+    
+    # Install advanced tools and patterns if helper script exists
+    if [ -f "$(pwd)/install/tools.sh" ]; then
+      log "Installing advanced tools..."
+      bash "$(pwd)/install/tools.sh" || warn "Advanced tools installation script exited with warnings"
+    fi
+    
+    # Initialize alias/bootstrap layer if present
+    if [ -f "$(pwd)/kda-bootstrap.sh" ]; then
+      log "Configuring portable aliases and per-host overrides..."
+      bash "$(pwd)/kda-bootstrap.sh" --install --yes || warn "Bootstrap configuration reported warnings"
+    fi
     
     log "Installation completed!"
     log "Please run 'source ~/.zshrc' or restart your terminal"
