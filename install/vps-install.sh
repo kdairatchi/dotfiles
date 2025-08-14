@@ -65,6 +65,38 @@ fi
 # Error handling
 trap 'echo -e "${RED}[!] Error on line $LINENO${NC}"; exit 1' ERR
 
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check internet connectivity
+check_internet() {
+    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        echo -e "${RED}[!] No internet connection detected${NC}"
+        exit 1
+    fi
+}
+
+# Function to show progress
+show_progress() {
+    local current=$1
+    local total=$2
+    local width=50
+    local percentage=$((current * 100 / total))
+    local completed=$((width * current / total))
+    local remaining=$((width - completed))
+    
+    printf "\r["
+    printf "%${completed}s" | tr ' ' '#'
+    printf "%${remaining}s" | tr ' ' '-'
+    printf "] %d%%" $percentage
+    
+    if [ "$current" -eq "$total" ]; then
+        echo ""
+    fi
+}
+
 # Logging functions
 log_info() { echo -e "${BLUE}[*] $1${NC}"; }
 log_success() { echo -e "${GREEN}[+] $1${NC}"; }
@@ -379,19 +411,19 @@ sleep 1.5
 
 #---------Install subdomain takeovers
 #SubOver
-echo -e "\e[93m\e[1m----> Installing SubOver";
-go get -v github.com/Ice3man543/SubOver > /dev/null 2>&1 && ln -s ~/go/bin/subover /usr/bin/;
-echo -e "\e[32mDone! SubOver installed."; echo "";
+echo -e "${YELLOW}[*] Installing SubOver${NC}";
+sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install -v github.com/Ice3man543/SubOver@latest > /dev/null 2>&1 && ln -s ~/go/bin/subover /usr/local/bin/';
+echo -e "${GREEN}[+] SubOver installed${NC}"; echo "";
 sleep 1.5
 
 #---------Install Fuzzing Tools
 #Dirsearch
-echo -e "\e[93m\e[1m----> Installing dirsearch";
-git clone https://github.com/maurosoria/dirsearch.git > /dev/null 2>&1;
-cd dirsearch*
+echo -e "${YELLOW}[*] Installing dirsearch${NC}";
+cd "$TOOLS_DIR" && git clone https://github.com/maurosoria/dirsearch.git > /dev/null 2>&1;
+cd "$TOOLS_DIR/dirsearch"
 pip3 install -r requirements.txt
-cd ~/tools/
-echo -e "\e[32mDone! Dirsearch installed.";
+cd "$TOOLS_DIR"
+echo -e "${GREEN}[+] Dirsearch installed${NC}"; echo "";
 sleep 1.5
 
 	#Lilly
@@ -448,7 +480,8 @@ sleep 1.5
 	echo -e ${BLUE}"[DNS RESOLVER]" ${GREEN}"Galer installation is done !"; echo "";
         #Haktrails
 	echo -e ${BLUE}"[DNS RESOLVER]" ${RED}"Haktrails installation in progress ...";
-	GO111MODULE=on go install -v github.com/hakluke/haktrails@latest > /dev/null 2>&1 && ln -s ~/go/bin/haktrails /usr/local/bin/ && cd .config && mkdir haktools && cd haktools && touch haktrails-config.yml;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && GO111MODULE=on go install -v github.com/hakluke/haktrails@latest > /dev/null 2>&1 && ln -s ~/go/bin/haktrails /usr/local/bin/';
+	sudo -u "$USER_NAME" mkdir -p "/home/$USER_NAME/.config/haktools" && sudo -u "$USER_NAME" touch "/home/$USER_NAME/.config/haktools/haktrails-config.yml";
 	echo -e ${BLUE}"[DNS RESOLVER]" ${GREEN}"Haktrails installation is done !"; echo "";
         #knockpy
 	echo -e ${BLUE}"[SUBDOMAINS ENUMERATION]" ${RED}"knockpy installation in progress ...";
@@ -515,7 +548,7 @@ sleep 1.5
 	echo -e ${BLUE}"[API TOOLS]" ${GREEN}"Kiterunner installation is done !"; echo "";
             #Cookieless
 	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${RED}"Cookieless installation in progress ...";
-	GO111MODULE=on go install -v go install github.com/RealLinkers/cookieless@latest > /dev/null 2>&1 && ln -s ~/go/bin/cookieless /usr/local/bin/;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && GO111MODULE=on go install -v github.com/RealLinkers/cookieless@latest > /dev/null 2>&1 && ln -s ~/go/bin/cookieless /usr/local/bin/';
 	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${GREEN}"Cookieless installation is done !"; echo "";
     	#Gxssgo
 	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${RED}"Gxss installation in progress ...";
@@ -530,9 +563,9 @@ sleep 1.5
 	pip install git+https://github.com/xnl-h4ck3r/knoxnl.git;
 	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${GREEN}"Knoxnl installation is done !"; echo "";
         #Bxss
-	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${RED}"Knoxnl installation in progress ...";
-	go install github.com/ethicalhackingplayground/bxss@latest > /dev/null 2>&1 && ln -s ~/go/bin/bxss /usr/local/bin/;
-	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${GREEN}"Knoxnl installation is done !"; echo "";
+	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${RED}"Bxss installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/ethicalhackingplayground/bxss@latest > /dev/null 2>&1 && ln -s ~/go/bin/bxss /usr/local/bin/';
+	echo -e ${BLUE}"[VULNERABILITY - XSS]" ${GREEN}"Bxss installation is done !"; echo "";
     	#ghauri
 	echo -e ${BLUE}"[VULNERABILITY - SQL Injection]" ${RED}"NoSQLMap installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/r0oth3x49/ghauri.git > /dev/null 2>&1 && cd ghauri && python3 -m pip install --upgrade -r requirements.txt && python3 -m pip install -e . > /dev/null 2>&1;
@@ -546,33 +579,33 @@ sleep 1.5
 	go install github.com/mrco24/mrco24-error-sql@latest > /dev/null 2>&1 && ln -s ~/go/bin/mrco24-error-sql /usr/local/bin/; 
 	echo -e ${BLUE}"[VULNERABILITY - SQL]" ${GREEN}"error-sql installation is done !"; echo "";
         #Nrich
-	echo -e ${BLUE}"[CMS SCANNER]" ${RED}"Droopescan installation in progress ...";
+	echo -e ${BLUE}"[CMS SCANNER]" ${RED}"Nrich installation in progress ...";
 	wget https://gitlab.com/api/v4/projects/33695681/packages/generic/nrich/latest/nrich_latest_amd64.deb && dpkg -i nrich_latest_amd64.deb > /dev/null 2>&1;
-	echo -e ${BLUE}"[CMS SCANNER]" ${GREEN}"Droopescan installation is done !"; echo "";
+	echo -e ${BLUE}"[CMS SCANNER]" ${GREEN}"Nrich installation is done !"; echo "";
 	#AEM-Hacking
 	echo -e ${BLUE}"[CMS SCANNER]" ${RED}"AEM-Hacking installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/0ang3el/aem-hacker.git > /dev/null 2>&1 && cd aem-hacker && pip3 install -r requirements.txt > /dev/null 2>&1;
 	echo -e ${BLUE}"[CMS SCANNER]" ${GREEN}"AEM-Hacking installation is done !"; echo "";
  	#WhatWaf
-	echo -e ${BLUE}"[CMS SCANNER]" ${RED}"WPScan  installation in progress ...";
+	echo -e ${BLUE}"[CMS SCANNER]" ${RED}"WhatWaf installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/Ekultek/WhatWaf.git > /dev/null 2>&1 && cd WhatWaf && cp -r whatwaf /usr/local/bin;
-	echo -e ${BLUE}"[CMS SCANNER]" ${GREEN}"WPScan installation is done !"; echo "";
+	echo -e ${BLUE}"[CMS SCANNER]" ${GREEN}"WhatWaf installation is done !"; echo "";
     	#subjs
 	echo -e ${BLUE}"[JS FILES HUNTING]" ${RED}"subjs installation in progress ...";
 	wget https://github.com/lc/subjs/releases/download/v1.0.1/subjs_1.0.1_linux_amd64.tar.gz && tar xvf subjs_1.0.1_linux_amd64.tar.gz && mv subjs /usr/bin/subjs;
 	echo -e ${BLUE}"[JS FILES HUNTING]" ${GREEN}"subjs installation is done !"; echo "";
 	#Getjs
 	echo -e ${BLUE}"[JS FILES HUNTING]" ${RED}"Getjs installation in progress ...";
-	go install github.com/003random/getJS@latest > /dev/null 2>&1 && ln -s ~/go/bin/getJS /usr/local/bin/;
-	echo -e ${BLUE}"[JS FILES HUNTING]" ${GREEN}"Getjs installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/003random/getJS@latest > /dev/null 2>&1 && ln -s ~/go/bin/getJS /usr/local/bin/';
+	echo -e ${BLUE}"[JS FILES HUNTING]" ${GREEN}"Getjs installation is done !"; echo "";
 	#jsscanner
 	echo -e ${BLUE}"[JS FILES HUNTING]" ${RED}"Jsscanner installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/dark-warlord14/JSScanner > /dev/null 2>&1 && cd JSScanner/ && bash install.sh > /dev/null 2>&1;
 	echo -e ${BLUE}"[JS FILES HUNTING]" ${GREEN}"Jsscanner installation is done !"; echo "";
     	#GitDorker
-	echo -e ${BLUE}"[GIT HUNTING]" ${RED}"gitGraber installation in progress ...";
+	echo -e ${BLUE}"[GIT HUNTING]" ${RED}"GitDorker installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/obheda12/GitDorker.git > /dev/null 2>&1 && cd GitDorker && pip3 install -r requirements.txt > /dev/null 2>&1;
-	echo -e ${BLUE}"[GIT HUNTING]" ${GREEN}"gitGraber installation is done !"; echo "";
+	echo -e ${BLUE}"[GIT HUNTING]" ${GREEN}"GitDorker installation is done !"; echo "";
 	#gitGraber
 	echo -e ${BLUE}"[GIT HUNTING]" ${RED}"gitGraber installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/hisxo/gitGraber.git > /dev/null 2>&1 && cd gitGraber && pip3 install -r requirements.txt > /dev/null 2>&1;
@@ -582,7 +615,7 @@ sleep 1.5
 	pip3 install GitHacker > /dev/null 2>&1;
 	echo -e ${BLUE}"[GIT HUNTING]" ${GREEN}"GitHacker installation is done !"; echo "";
 	#GitTools
-	echo -e ${BLUE}"[GIT HUNTING]" ${RED}"GitToolsinstallation in progress ...";
+	echo -e ${BLUE}"[GIT HUNTING]" ${RED}"GitTools installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/internetwache/GitTools.git > /dev/null 2>&1;
 	echo -e ${BLUE}"[GIT HUNTING]" ${GREEN}"GitTools installation is done !"; echo "";
     	#DumpsterDiver
@@ -603,8 +636,8 @@ sleep 1.5
 	echo -e ${BLUE}"[SENSITIVE FINDING TOOLS]" ${GREEN}"Gau-Expose installation is done !"; echo "";
         #Mantra
 	echo -e ${BLUE}"[SENSITIVE FINDING TOOLS]" ${RED}"Mantra installation in progress ...";
-	go install github.com/MrEmpy/mantra@latest && cp -r /root/go/bin/mantra /usr/local/bin > /dev/null 2>&1;
-	echo -e ${BLUE}"[SENSITIVE FINDING TOOLS]" ${GREEN}"Mantra installation is done !" ${RESTORE}; echo "";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/MrEmpy/mantra@latest > /dev/null 2>&1 && cp -r ~/go/bin/mantra /usr/local/bin';
+	echo -e ${BLUE}"[SENSITIVE FINDING TOOLS]" ${GREEN}"Mantra installation is done !"; echo "";
     #wappalyzer-cli
 echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"wappalyzer-cli installation in progress ...";
 cd "$TOOLS_DIR" && git clone https://github.com/gokulapap/wappalyzer-cli  > /dev/null 2>&1 && cd wappalyzer-cli && pip3 install . > /dev/null 2>&1;
@@ -614,35 +647,35 @@ echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"wappalyzer-cli installation is done !";
 	cd "$TOOLS_DIR" &&  git clone https://github.com/r0075h3ll/Oralyzer.git && cd Oralyzer && pip3 install -r requirements.txt;
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Oralyzer installation is done !"; echo "";
         #Cf-hero
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Oralyzer installation in progress ...";
-	go install -v github.com/musana/cf-hero/cmd/cf-hero@latest > /dev/null 2>&1 && ln -s ~/go/bin/cf-hero /usr/local/bin/;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Oralyzer installation is done !"; echo "";
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Cf-hero installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install -v github.com/musana/cf-hero/cmd/cf-hero@latest > /dev/null 2>&1 && ln -s ~/go/bin/cf-hero /usr/local/bin/';
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Cf-hero installation is done !"; echo "";
         #Notify
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"tok installation in progress ...";
-	go install -v github.com/projectdiscovery/notify/cmd/notify@latest > /dev/null 2>&1 && ln -s ~/go/bin/notify /usr/local/bin/;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"tok installation is done !"; echo "";
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Notify installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install -v github.com/projectdiscovery/notify/cmd/notify@latest > /dev/null 2>&1 && ln -s ~/go/bin/notify /usr/local/bin/';
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Notify installation is done !"; echo "";
         #tok
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"tok installation in progress ...";
-	go install github.com/mrco24/tok@latest > /dev/null 2>&1 && ln -s ~/go/bin/tok /usr/local/bin/;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/mrco24/tok@latest > /dev/null 2>&1 && ln -s ~/go/bin/tok /usr/local/bin/';
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"tok installation is done !"; echo "";
 	#installallurls
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"installallurls installation in progress ...";
-	GO111MODULE=on go install -v github.com/lc/gau@latest > /dev/null 2>&1 && ln -s ~/go/bin/gau /usr/local/bin/;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"installallurls installation is done !"; echo "";
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Gau installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && GO111MODULE=on go install -v github.com/lc/gau@latest > /dev/null 2>&1 && ln -s ~/go/bin/gau /usr/local/bin/';
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Gau installation is done !"; echo "";
 	#anti-burl
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"anti-burl installation in progress ...";
-	go install github.com/tomnomnom/hacks/anti-burl@latest > /dev/null 2>&1 && ln -s ~/go/bin/anti-burl /usr/local/bin/;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/tomnomnom/hacks/anti-burl@latest > /dev/null 2>&1 && ln -s ~/go/bin/anti-burl /usr/local/bin/';
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"anti-burl installation is done !"; echo "";
-    	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"anew installation in progress ...";
-	go install github.com/tomnomnom/fff@latest > /dev/null 2>&1 && ln -s ~/go/bin/fff /usr/local/bin/;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"anew installation is done !"; echo "";
+    	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Fff installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/tomnomnom/fff@latest > /dev/null 2>&1 && ln -s ~/go/bin/fff /usr/local/bin/';
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Fff installation is done !"; echo "";
     	#gron
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"gron installation in progress ...";
-	go install github.com/tomnomnom/gron@latest > /dev/null 2>&1 && ln -s ~/go/bin/gron /usr/local/bin/;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/tomnomnom/gron@latest > /dev/null 2>&1 && ln -s ~/go/bin/gron /usr/local/bin/';
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"gron installation is done !"; echo "";
     	#qsreplace
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"qsreplace installation in progress ...";
-	go install github.com/tomnomnom/qsreplace@latest > /dev/null 2>&1 && ln -s ~/go/bin/qsreplace /usr/local/bin/;
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/tomnomnom/qsreplace@latest > /dev/null 2>&1 && ln -s ~/go/bin/qsreplace /usr/local/bin/';
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"qsreplace installation is done !"; echo "";
 	#Interlace
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Interlace installation in progress ...";
@@ -653,9 +686,9 @@ echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"wappalyzer-cli installation is done !";
 	apt-get install -y jq > /dev/null 2>&1;
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"jq installation is done !"; echo "";
 	#cf_check
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"jq installation in progress ...";
-	go install github.com/dwisiswant0/cf-check@latest > /dev/null 2>&1 && ln -s ~/go/bin/cf-check /usr/local/bin/;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"jq installation is done !" ${RESTORE}; echo "";
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"cf-check installation in progress ...";
+	sudo -u "$USER_NAME" bash -c 'source /etc/profile.d/golang.sh && go install github.com/dwisiswant0/cf-check@latest > /dev/null 2>&1 && ln -s ~/go/bin/cf-check /usr/local/bin/';
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"cf-check installation is done !"; echo "";
 	#Tmux
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Tmux installation in progress ...";
 	apt-get install tmux -y > /dev/null 2>&1;
@@ -663,7 +696,7 @@ echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"wappalyzer-cli installation is done !";
 	#Uro
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"Uro installation in progress ...";
 	pip3 install uro > /dev/null 2>&1;
-	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Uro installation is done !" ${RESTORE}; echo "";
+	echo -e ${BLUE}"[USEFUL TOOLS]" ${GREEN}"Uro installation is done !"; echo "";
     #SploitScan
 	echo -e ${BLUE}"[USEFUL TOOLS]" ${RED}"SploitScan installation in progress ...";
 	cd "$TOOLS_DIR" && git clone https://github.com/xaitax/SploitScan.git > /dev/null 2>&1;
@@ -962,6 +995,108 @@ setup_2fa() {
     fi
 }
 
+# Create installation summary
+create_summary() {
+    log_info "Creating installation summary..."
+    
+    cat << EOF > "/home/$USER_NAME/INSTALLATION_SUMMARY.txt"
+╔══════════════════════════════════════════════════════════════╗
+║                 VPS SETUP SUMMARY                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+Installation Date: $(date)
+Username: $USER_NAME
+SSH Port: $SSH_PORT
+2FA Enabled: $(if [ "$ENABLE_2FA" = "yes" ]; then echo "Yes"; else echo "No"; fi)
+Docker Installed: $(if [ "$INSTALL_DOCKER" = "yes" ]; then echo "Yes"; else echo "No"; fi)
+Metasploit Installed: $(if [ "$INSTALL_METASPLOIT" = "yes" ]; then echo "Yes"; else echo "No"; fi)
+
+DIRECTORIES:
+- Tools: $TOOLS_DIR
+- Wordlists: $WORDLISTS_DIR
+- User Home: /home/$USER_NAME
+- Scripts: /home/$USER_NAME/scripts
+
+INSTALLED TOOLS:
+Subdomain Enumeration:
+- subfinder, assetfinder, amass, findomain, massdns, knock, lazyrecon
+- github-subdomains, sublist3r, crtndstry, dnsx, dnsgen, subover
+- chaos, shodan, gotator, ctfr, cero, analyticsrelationships
+- galer, haktrails, knockpy, censys, quickcert
+
+Vulnerability Scanners:
+- nuclei, nikto, xray, afrog, poc-bomber, x8, open-redirect
+- gopherus, request-smuggling, kiterunner
+
+XSS Tools:
+- cookieless, gxss, findom-xss, knoxnl, bxss
+
+SQL Injection Tools:
+- ghauri, time-sql, error-sql
+
+CMS Scanners:
+- nrich, aem-hacking, whatwaf
+
+JavaScript Tools:
+- subjs, getjs, jsscanner
+
+Git Hunting:
+- gitdorker, gitgraber, githacker, gittools
+
+Sensitive Data Finding:
+- waymore, parameters, xnlinkfinder, dumpsterdiver
+- earlybird, ripgrep, gau-expose, mantra
+
+Useful Tools:
+- wappalyzer-cli, oralyzer, cf-hero, notify, tok, gau
+- anti-burl, fff, gron, qsreplace, interlace, jq
+- cf-check, tmux, uro, sploitscan
+
+HTTP Tools:
+- httpx, katana, hakrawler, waybackurls, gau
+
+Fuzzing Tools:
+- ffuf, gobuster, feroxbuster
+
+DNS Tools:
+- dnsx, shuffledns, puredns
+
+Network Tools:
+- naabu, masscan
+
+Utility Tools:
+- gf, unfurl, anew, qsreplace
+
+Wordlists:
+- SecLists, fuzzdb, PayloadsAllTheThings
+- all-subdomains.txt, best-dns-wordlist.txt
+
+AUTOMATION SCRIPTS:
+- auto-recon.sh: Automated reconnaissance workflow
+- update-tools.sh: Update all installed tools
+
+USEFUL COMMANDS:
+- auto-recon <domain>: Start reconnaissance
+- update-tools: Update all tools
+- nuclei -update-templates: Update nuclei templates
+
+SSH CONNECTION:
+ssh -p $SSH_PORT $USER_NAME@your-server-ip
+
+SECURITY NOTES:
+- SSH is hardened and running on port $SSH_PORT
+- UFW firewall is configured
+- Fail2ban is active
+- Root login is disabled
+- Password authentication is disabled (key-based only)
+$(if [ "$ENABLE_2FA" = "yes" ]; then echo "- 2FA is enabled for additional security"; fi)
+
+EOF
+
+    chown "$USER_NAME:$USER_NAME" "/home/$USER_NAME/INSTALLATION_SUMMARY.txt"
+    log_success "Installation summary created"
+}
+
 # Final setup
 final_setup() {
     log_info "Running final setup..."
@@ -975,6 +1110,9 @@ final_setup() {
     
     # Set permissions
     chown -R "$USER_NAME:$USER_NAME" "/home/$USER_NAME"
+    
+    # Create summary
+    create_summary
     
     log_success "Setup complete!"
     echo -e "${GREEN}"
@@ -994,6 +1132,7 @@ final_setup() {
     echo "║     ssh -p $SSH_PORT $USER_NAME@your-server-ip              ║"
     echo "║  2. Run 'auto-recon <domain>' to start reconnaissance       ║"
     echo "║  3. Run 'update-tools' to keep tools updated                ║"
+    echo "║  4. Check INSTALLATION_SUMMARY.txt for details              ║"
     echo "║                                                              ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -1001,6 +1140,7 @@ final_setup() {
 
 # Main execution
 display_banner
+check_internet
 get_user_input
 system_update
 create_user
