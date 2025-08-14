@@ -1,4 +1,4 @@
-Cheat sheet of test commands for the Enhanced Banner Maker script:
+### Cheat sheet test commands for the Banner Maker script:
 
 ### Basic Banner Generation
 ```bash
