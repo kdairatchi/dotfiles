@@ -10,6 +10,7 @@
 - [Reporting and Output Issues](#reporting-and-output-issues)
 - [Configuration Problems](#configuration-problems)
 - [Debugging Techniques](#debugging-techniques)
+- [VPS ISSUES](#vps-issues)
 
 ## Installation Issues
 
@@ -897,7 +898,84 @@ echo 65536 | sudo tee /proc/sys/fs/nr_open
 sudo rm -rf /tmp/parallel*
 sudo rm -rf /tmp/nuclei*
 ```
+### vps-issues
+If you want to do a disk cleanup for a VPS, you can handle it in three layers:
+quick space recovery, deep cleanup, and ongoing monitoring.
 
----
+⸻
+
+1. Quick Space Recovery
+
+For a fast reclaim of disk space without breaking critical services:
+
+# Check what's taking space
+df -h
+du -sh /* 2>/dev/null | sort -h
+
+# Clear APT cache
+sudo apt-get clean && sudo apt-get autoclean
+
+# Remove old package configs
+sudo apt-get autoremove --purge -y
+
+# Clear journal logs (only recent logs kept)
+sudo journalctl --vacuum-time=3d
+
+# Clear thumbnail & temporary files
+sudo rm -rf /tmp/*
+sudo rm -rf ~/.cache/thumbnails/*
+
+# Remove old Snap revisions
+sudo snap list --all | awk '/disabled/{print $1, $2}' |
+while read snapname revision; do
+  sudo snap remove "$snapname" --revision="$revision"
+done
+
+
+⸻
+
+2. Deep Cleanup & Analysis
+
+If you need to hunt down big files and decide what’s safe to delete:
+
+# Find largest files & dirs
+sudo du -ahx / | sort -rh | head -n 30
+
+# Find unused Docker data
+docker system prune -a --volumes
+
+# Clear unused kernel versions (Debian/Ubuntu)
+dpkg --list 'linux-image*' | grep ^ii
+sudo apt-get remove --purge linux-image-X.X.X-XX-generic
+
+# Check orphaned packages
+sudo deborphan | xargs sudo apt-get -y remove --purge
+
+
+⸻
+
+3. Automation & Monitoring
+
+Set up a recurring script or cronjob for ongoing cleanup:
+
+sudo nano /usr/local/bin/vps_cleanup.sh
+
+#!/bin/bash
+apt-get clean
+apt-get autoclean
+apt-get autoremove --purge -y
+journalctl --vacuum-time=3d
+rm -rf /tmp/*
+docker system prune -af --volumes
+
+Make it executable and schedule weekly:
+
+sudo chmod +x /usr/local/bin/vps_cleanup.sh
+sudo crontab -e
+# Run every Sunday at 3 AM
+0 3 * * 0 /usr/local/bin/vps_cleanup.sh
+
+
+⸻
 
 *This troubleshooting guide is continuously updated based on user feedback and new issues discovered. If you encounter a problem not covered here, please report it so we can add the solution.*
