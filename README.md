@@ -37,7 +37,16 @@ A comprehensive, high-performance bug bounty and penetration testing framework w
 - **Custom Workflows**: Tailored scanning pipelines
 
 ## 📦 Installation
+## VPS
+```bash
+bash <(curl -s https://raw.githubusercontent.com/kdairatchi/dotfiles/main/install/vps-install.sh)
+```
 
+Note: Always review scripts from external sources before executing them. You can first examine the script by running:
+
+```bash
+curl -s https://raw.githubusercontent.com/kdairatchi/dotfiles/main/install/vps-install.sh | less
+```
 ### Quick Installation (Recommended)
 ```bash
 # Clone the repository
