@@ -463,5 +463,5 @@ This tool is intended for authorized security testing and educational purposes o
 ---
 
 **Made with ❤️ for the security research community**
-
+Buy Me a Coffee → https://buymeacoffee.com/kdairatchi
 *Remember: With great power comes great responsibility. Use these tools ethically and legally.*
