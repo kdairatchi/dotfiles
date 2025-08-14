@@ -118,7 +118,7 @@ display_banner() {
 ║  ╚═════╝  ╚═════╝ ╚═════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ║
 ║                                                                              ║
 ║                  B U G   B O U N T Y   V P S   S E T U P                     ║
-║                         Ultimate Edition - v2025.3                           ║
+║         Buy Me a Coffee → https://buymeacoffee.com/kdairatchi                ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 EOF
