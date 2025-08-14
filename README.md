@@ -1,4 +1,27 @@
 # Ultimate Bug Bounty & Security Research Environment
+Here’s a polished GitHub description for your **Ultimate Bug Bounty & Security Research Environment** dotfiles repository:
+
+---
+
+# 🚀 Ultimate Bug Bounty & Security Research Environment  
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+[![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)  
+[![Shell](https://img.shields.io/badge/Shell-Bash%20%7C%20Zsh-green.svg)](https://www.gnu.org/software/bash/)  
+[![Parallel Jobs](https://img.shields.io/badge/Parallel%20Jobs-9000-red.svg)](https://www.gnu.org/software/parallel/)  
+[![Tools](https://img.shields.io/badge/Security%20Tools-150+-purple.svg)](#-core-tools)  
+
+**A high-performance, parallelized toolkit for bug bounty hunters, pentesters, and security researchers.**  
+- **Optimized workflows** for recon, scanning, and reporting  
+- **Real-time monitoring** and interactive HTML reports  
+
+### ⚠️ Legal  
+**For authorized testing only.** Use responsibly and comply with all applicable laws.  
+
+[**Explore Docs**](#) | [**Report Issues**](#) | [**Contribute**](#)  
+
+--- 
+
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
@@ -37,7 +60,7 @@ A comprehensive, high-performance bug bounty and penetration testing framework w
 - **Custom Workflows**: Tailored scanning pipelines
 
 ## 📦 Installation
-## VPS
+- **One-command VPS deployment**:  
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/kdairatchi/dotfiles/main/install/vps-install.sh)
 ```
