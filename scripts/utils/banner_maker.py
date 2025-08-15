@@ -7,78 +7,66 @@ import argparse
 from datetime import datetime
 import shutil
 import textwrap
+import time
 
 class EnhancedBannerMaker:
     def __init__(self):
         self.available_fonts = pyfiglet.FigletFont.getFonts()
         self.border_styles = {
-            'single': '-',
-            'double': '=',
-            'star': '*',
-            'hash': '#',
-            'tilde': '~',
-            'pipe': '|',
-            'plus': '+',
-            'dash': '-',
-            'none': '',
-            'box': 'box'
+            'single': '-', 'double': '=', 'star': '*', 'hash': '#',
+            'tilde': '~', 'pipe': '|', 'plus': '+', 'dash': '-',
+            'arrow': '>', 'diamond': '<>', 'none': '', 'box': 'box'
         }
         self.color_options = [
             'grey', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'
         ]
         self.comment_styles = {
-            'bash': ('# ', ''),
-            'python': ('# ', ''),
-            'c': ('// ', ''),
-            'html': ('<!-- ', ' -->'),
-            'none': ('', '')
+            'bash': ('# ', ''), 'python': ('# ', ''), 'c': ('// ', ''),
+            'html': ('<!-- ', ' -->'), 'none': ('', '')
         }
         self.insert_positions = {
-            'top': 0,
-            'after-shebang': 1,
-            'before-end': -1
+            'top': 0, 'after-shebang': 1, 'before-end': -1
         }
+        self.verbose = False
+
+    def _log(self, message, level='info'):
+        if self.verbose:
+            color = 'yellow' if level == 'info' else 'red'
+            print(colored(f'[{level.upper()}] {message}', color))
 
     def show_intro(self):
-        intro = pyfiglet.figlet_format("Banner Maker Pro", font="big")
+        intro = pyfiglet.figlet_format('Banner Maker Pro', font='big')
         print(colored(intro, 'cyan'))
-        print(colored("Create and deploy custom banners for your scripts!\n", 'yellow'))
+        print(colored('A comprehensive tool for creating and deploying script banners.\n', 'yellow'))
 
     def list_fonts(self):
         return sorted(self.available_fonts)
 
-    def generate_banner(self, text, font='standard', color='green', border='single', width=80, 
-                      timestamp=False, author=None, box=False):
-        # Generate ASCII art
+    def generate_banner(self, text, font='standard', color='green', border='single', width=80,
+                      timestamp=False, author=None, box=False, align='center'):
+        self._log(f'Generating banner with font: {font}, color: {color}, border: {border}')
         try:
-            ascii_art = pyfiglet.figlet_format(text, font=font)
+            ascii_art = pyfiglet.figlet_format(text, font=font, width=width, justify=align)
         except pyfiglet.FontNotFound:
-            ascii_art = pyfiglet.figlet_format(text, font='standard')
+            self._log(f'Font \'{font}\' not found, falling back to \'standard\'.', 'warn')
+            ascii_art = pyfiglet.figlet_format(text, font='standard', width=width, justify=align)
 
-        # Handle box border
         if border == 'box' or box:
             return self._generate_box_banner(ascii_art, text, color, width, timestamp, author)
 
-        # Calculate border
         border_char = self.border_styles.get(border, '-')
-        border_line = border_char * width if border_char else ""
-
-        # Color the text
+        border_line = border_char * width if border_char else ''
         colored_art = colored(ascii_art, color)
-
-        # Build the banner
         banner_lines = []
         if border_char:
             banner_lines.append(border_line)
-
         banner_lines.extend(colored_art.split('\n'))
 
-        # Add metadata if requested
         metadata = []
         if timestamp:
-            metadata.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            metadata.append(f'Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}')
         if author:
-            metadata.append(f"Author: {author}")
+            metadata.append(f'Author: {author}')
 
         if metadata:
             if border_char:
@@ -93,86 +81,54 @@ class EnhancedBannerMaker:
         return '\n'.join(banner_lines)
 
     def _generate_box_banner(self, ascii_art, text, color, width, timestamp, author):
-        # Create a box-style banner
-        top_bottom = f"+{'-' * (width - 2)}+"
+        self._log('Generating box-style banner.')
+        top_bottom = f'+{'-' * (width - 2)}+'
         side = '|'
-        
         colored_art = colored(ascii_art, color)
         art_lines = colored_art.split('\n')
-        
         banner_lines = [top_bottom]
-        
         for line in art_lines:
-            if line.strip():
-                banner_lines.append(f"{side} {line.ljust(width - 4)} {side}")
-            else:
-                banner_lines.append(f"{side}{' ' * (width - 2)}{side}")
+            padded_line = line.ljust(width - 4) if len(line) < width - 4 else line[:width - 4]
+            banner_lines.append(f'{side} {padded_line} {side}')
 
-        # Add metadata if requested
         if timestamp or author:
-            banner_lines.append(f"{side}{'-' * (width - 2)}{side}")
-            
+            banner_lines.append(f'{side}{'-' * (width - 2)}{side}')
             if timestamp:
-                ts = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                banner_lines.append(f"{side} {ts.ljust(width - 4)} {side}")
-            
+                ts = f'Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}'
+                banner_lines.append(f'{side} {ts.ljust(width - 4)} {side}')
             if author:
-                auth_line = f"Author: {author}"
-                banner_lines.append(f"{side} {auth_line.ljust(width - 4)} {side}")
-        
+                auth_line = f'Author: {author}'
+                banner_lines.append(f'{side} {auth_line.ljust(width - 4)} {side}')
         banner_lines.append(top_bottom)
         return '\n'.join(banner_lines)
 
     def generate_commented_banner(self, banner_text, comment_style='bash', width=80):
+        self._log(f'Generating commented banner for \'{comment_style}\'.')
         comment_start, comment_end = self.comment_styles.get(comment_style, ('# ', ''))
-        
         commented_lines = []
         for line in banner_text.split('\n'):
             if line.strip():
-                commented_line = f"{comment_start}{line.ljust(width - len(comment_start) - len(comment_end))}{comment_end}"
+                commented_line = f'{comment_start}{line}{comment_end}'
             else:
-                commented_line = comment_start + comment_end
+                commented_line = f'{comment_start}{comment_end}'
             commented_lines.append(commented_line)
-        
-        # Add marker comments
-        commented_lines.insert(0, f"{comment_start}=== BANNER_MAKER_BLOCK START ==={comment_end}")
-        commented_lines.append(f"{comment_start}=== BANNER_MAKER_BLOCK END ==={comment_end}")
-        
+        commented_lines.insert(0, f'{comment_start}=== BANNER_MAKER_BLOCK START ==={comment_end}')
+        commented_lines.append(f'{comment_start}=== BANNER_MAKER_BLOCK END ==={comment_end}')
         return '\n'.join(commented_lines)
 
-    def generate_runtime_function(self, banner_text, language='bash', function_name='print_banner'):
-        if language == 'bash':
-            code = f"""#!/bin/bash
-{function_name}() {{
-    cat << 'BANNER_EOF'
-{banner_text}
-BANNER_EOF
-}}
-"""
-        elif language == 'python':
-            code = f"""def {function_name}():
-    print(r\"\"\"
-{banner_text}
-\"\"\")
-"""
-        return code
-
     def inject_into_script(self, banner_code, target_script, position='after-shebang', backup=True):
+        self._log(f'Injecting banner into \'{target_script}\' at position \'{position}\'.')
         try:
-            # Create backup if requested
             if backup:
-                shutil.copy2(target_script, f"{target_script}.bak")
-            
+                backup_file = f'{target_script}.bak'
+                self._log(f'Creating backup: {backup_file}')
+                shutil.copy2(target_script, backup_file)
             with open(target_script, 'r') as f:
                 content = f.readlines()
-            
-            # Check if banner already exists
             for line in content:
-                if "BANNER_MAKER_BLOCK START" in line:
-                    print(colored("Banner already exists in script. Skipping insertion.", 'yellow'))
+                if 'BANNER_MAKER_BLOCK START' in line:
+                    print(colored('Banner already exists. Skipping insertion.', 'yellow'))
                     return False
-            
-            # Determine insert position
             insert_pos = 0
             if position == 'after-shebang':
                 for i, line in enumerate(content):
@@ -181,218 +137,189 @@ BANNER_EOF
                         break
             elif position == 'before-end':
                 insert_pos = len(content)
-            
-            # Insert the banner
             content.insert(insert_pos, banner_code + '\n\n')
-            
             with open(target_script, 'w') as f:
                 f.writelines(content)
-            
             return True
-        
         except Exception as e:
-            print(colored(f"Error injecting banner: {e}", 'red'))
+            print(colored(f'Error injecting banner: {e}', 'red'))
             return False
+
+    def process_bulk(self, input_file, output_dir, **kwargs):
+        self._log(f'Starting bulk processing from \'{input_file}\'.')
+        if not os.path.exists(output_dir):
+            self._log(f'Output directory \'{output_dir}\' not found. Creating it.')
+            os.makedirs(output_dir)
+        with open(input_file, 'r') as f:
+            titles = [line.strip() for line in f if line.strip()]
+        
+        total = len(titles)
+        for i, title in enumerate(titles):
+            print(colored(f'Processing [{i+1}/{total}]: {title}', 'cyan'))
+            banner = self.generate_banner(text=title, **kwargs)
+            filename = f'{title.replace(' ', '_').lower()}.txt'
+            filepath = os.path.join(output_dir, filename)
+            with open(filepath, 'w') as out_f:
+                out_f.write(banner)
+            self._log(f'Saved banner to \'{filepath}\'')
+            time.sleep(0.1) 
+        print(colored(f'\nBulk processing complete. Banners saved in \'{output_dir}\'.', 'green'))
+
+    def interactive_menu(self):
+        self.show_intro()
+        
+        opts = {
+            'text': 'Hello World', 'font': 'standard', 'color': 'green',
+            'border': 'single', 'width': 80, 'timestamp': False,
+            'author': None, 'align': 'center'
+        }
+
+        def print_menu():
+            os.system('clear' if os.name == 'posix' else 'cls')
+            print(colored('Banner Preview:', 'yellow'))
+            preview = self.generate_banner(**opts)
+            print(preview)
+            print('\n' + '='*opts['width'])
+            print(colored('Interactive Menu - Customize your banner', 'cyan'))
+            print('='*opts['width'])
+            print(f'1. Text:      {opts['text']}')
+            print(f'2. Font:      {opts['font']}')
+            print(f'3. Color:     {opts['color']}')
+            print(f'4. Border:    {opts['border']}')
+            print(f'5. Width:     {opts['width']}')
+            print(f'6. Alignment: {opts['align']}')
+            print(f'7. Toggle Timestamp: {"On" if opts['timestamp'] else "Off"}')
+            print(f"8. Set Author:       {opts['author'] or 'Not set'}")
+            print(colored('S: Save/Export | L: List Fonts | Q: Quit', 'yellow'))
+
+        while True:
+            print_menu()
+            choice = input(colored('Choose an option to edit: ', 'green')).lower()
+
+            if choice == '1':
+                opts['text'] = input('Enter new text: ')
+            elif choice == '2':
+                opts['font'] = input(f'Enter font name (current: {opts['font']}): ')
+            elif choice == '3':
+                print('Colors:', ', '.join(self.color_options))
+                opts['color'] = input(f'Enter color (current: {opts['color']}): ')
+            elif choice == '4':
+                print('Borders:', ', '.join(self.border_styles.keys()))
+                opts['border'] = input(f'Enter border style (current: {opts['border']}): ')
+            elif choice == '5':
+                try:
+                    opts['width'] = int(input(f'Enter width (current: {opts['width']}): '))
+                except ValueError:
+                    print(colored('Invalid width. Please enter a number.', 'red'))
+                    time.sleep(1)
+            elif choice == '6':
+                align_choice = input('Alignment (left, center, right): ')
+                if align_choice in ['left', 'center', 'right']:
+                    opts['align'] = align_choice
+            elif choice == '7':
+                opts['timestamp'] = not opts['timestamp']
+            elif choice == '8':
+                opts['author'] = input('Enter author name (or leave blank to clear): ') or None
+            elif choice == 'l':
+                print('\n'.join(self.list_fonts()))
+                input('\nPress Enter to continue...')
+            elif choice == 's':
+                self.export_menu(opts)
+                break
+            elif choice == 'q':
+                break
+
+    def export_menu(self, opts):
+        final_banner = self.generate_banner(**opts)
+        print(colored('\nFinal Banner:', 'yellow'))
+        print(final_banner)
+        
+        action = input(colored('\nChoose action:\n1. Save to file\n2. Inject into script\n3. Exit\nChoice: ', 'green'))
+        if action == '1':
+            filename = input('Output filename: ')
+            with open(filename, 'w') as f:
+                f.write(final_banner)
+            print(colored(f'Banner saved to {filename}', 'green'))
+        elif action == '2':
+            target = input('Target script path: ')
+            if not os.path.exists(target):
+                print(colored('Script not found.', 'red'))
+                return
+            lang = input(f'Comment style ({'/'.join(self.comment_styles.keys())}): ')
+            pos = input(f'Insert position ({'/'.join(self.insert_positions.keys())}): ')
+            commented = self.generate_commented_banner(final_banner, lang, opts['width'])
+            if self.inject_into_script(commented, target, pos):
+                print(colored(f'Successfully injected banner into {target}', 'green'))
 
     def run(self):
         parser = argparse.ArgumentParser(
-            description='Enhanced Banner Maker - Create and deploy custom banners for scripts',
+            description='Enhanced Banner Maker',
             formatter_class=argparse.RawTextHelpFormatter
         )
-        
-        # Banner content options
-        parser.add_argument('--text', help='Text to display in banner')
-        parser.add_argument('--font', help='Font style for banner text')
-        parser.add_argument('--color', help='Text color')
-        parser.add_argument('--border', help='Border style (single, double, star, hash, box, etc.)')
-        parser.add_argument('--box', action='store_true', help='Use box-style border')
-        parser.add_argument('--width', type=int, default=80, help='Banner width in characters')
-        parser.add_argument('--timestamp', action='store_true', help='Include timestamp in banner')
-        parser.add_argument('--author', help='Include author name in banner')
-        
-        # Output options
-        parser.add_argument('--out', help='Output file for banner')
-        parser.add_argument('--comment-lang', choices=self.comment_styles.keys(), 
-                           help='Generate commented banner for specific language')
-        
-        # Script injection options
+        parser.add_argument('--text', help='Text for the banner')
+        parser.add_argument('--font', default='standard', help='Font style')
+        parser.add_argument('--color', default='green', help='Text color')
+        parser.add_argument('--border', default='single', help='Border style')
+        parser.add_argument('--width', type=int, default=80, help='Banner width')
+        parser.add_argument('--align', default='center', choices=['left', 'center', 'right'], help='Text alignment')
+        parser.add_argument('--timestamp', action='store_true', help='Include timestamp')
+        parser.add_argument('--author', help='Include author name')
+        parser.add_argument('--out', help='Output file for the banner')
+        parser.add_argument('--comment-lang', choices=self.comment_styles.keys(), help='Comment banner for a language')
         parser.add_argument('--insert', help='Script file to inject banner into')
-        parser.add_argument('--position', choices=self.insert_positions.keys(), default='after-shebang',
-                           help='Where to insert banner in target script')
-        parser.add_argument('--no-backup', action='store_true', help='Disable backup when injecting')
-        
-        # Runtime options
-        parser.add_argument('--export-runtime', choices=['bash', 'python'],
-                           help='Export a runtime function to print the banner')
-        
-        # Info options
-        parser.add_argument('--list-fonts', action='store_true', help='List available fonts')
+        parser.add_argument('--position', choices=self.insert_positions.keys(), default='after-shebang', help='Injection position')
+        parser.add_argument('--no-backup', action='store_true', help='Disable backup during injection')
+        parser.add_argument('--list-fonts', action='store_true', help='List all available fonts')
+        parser.add_argument('--bulk', help='File with a list of titles for bulk generation')
+        parser.add_argument('--bulk-out', default='banners', help='Output directory for bulk generation')
+        parser.add_argument('--verbose', action='store_true', help='Enable verbose logging')
         
         args = parser.parse_args()
-        
+        self.verbose = args.verbose
+
         if args.list_fonts:
-            for font in self.list_fonts():
-                print(font)
+            print('\n'.join(self.list_fonts()))
             sys.exit(0)
-        
-        # Interactive mode if no arguments
-        if not any(vars(args).values()):
-            self.interactive_mode()
+
+        if args.bulk:
+            banner_opts = {
+                'font': args.font, 'color': args.color, 'border': args.border,
+                'width': args.width, 'timestamp': args.timestamp, 'author': args.author,
+                'align': args.align
+            }
+            self.process_bulk(args.bulk, args.bulk_out, **banner_opts)
             return
-        
-        # Generate banner
+
+        if not args.text:
+            self.interactive_menu()
+            return
+
         banner = self.generate_banner(
-            text=args.text or "My Script",
-            font=args.font or 'standard',
-            color=args.color or 'green',
-            border=args.border or ('box' if args.box else 'single'),
-            width=args.width,
-            timestamp=args.timestamp,
-            author=args.author
+            text=args.text, font=args.font, color=args.color, border=args.border,
+            width=args.width, timestamp=args.timestamp, author=args.author, align=args.align
         )
-        
-        # Handle different output options
-        if args.export_runtime:
-            runtime_code = self.generate_runtime_function(banner, args.export_runtime)
-            print(runtime_code)
-            if args.out:
-                with open(args.out, 'w') as f:
-                    f.write(runtime_code)
-            return
         
         if args.comment_lang:
             banner = self.generate_commented_banner(banner, args.comment_lang, args.width)
         
         if args.insert:
-            success = self.inject_into_script(
-                banner,
-                args.insert,
-                args.position,
-                not args.no_backup
-            )
-            if success:
-                print(colored(f"Successfully injected banner into {args.insert}", 'green'))
+            if self.inject_into_script(banner, args.insert, args.position, not args.no_backup):
+                print(colored(f'Successfully injected banner into {args.insert}', 'green'))
             return
         
-        # Default output
         print(banner)
         if args.out:
             with open(args.out, 'w') as f:
                 f.write(banner)
-            print(colored(f"Banner saved to {args.out}", 'green'))
+            print(colored(f'Banner saved to {args.out}', 'green'))
 
-    def interactive_mode(self):
-        self.show_intro()
-        
-        # Get banner text
-        text = input(colored("Enter banner text: ", 'green'))
-        
-        # Font selection
-        print(colored("\nAvailable fonts (sample):", 'yellow'))
-        sample_fonts = ['standard', 'slant', 'block', 'script', 'bubble']
-        for i, font in enumerate(sample_fonts, 1):
-            print(f"{i}. {font} - {pyfiglet.figlet_format('Hi', font=font).splitlines()[0]}")
-        print("6. Show all fonts (long list)")
-        
-        font_choice = input(colored("\nChoose font (1-6 or name): ", 'green'))
-        if font_choice.isdigit() and int(font_choice) == 6:
-            print("\n".join(self.list_fonts()))
-            font = input(colored("\nEnter font name: ", 'green'))
-        elif font_choice.isdigit() and 1 <= int(font_choice) <= 5:
-            font = sample_fonts[int(font_choice)-1]
-        else:
-            font = font_choice
-        
-        # Color selection
-        print(colored("\nAvailable colors:", 'yellow'))
-        for i, color in enumerate(self.color_options, 1):
-            print(colored(f"{i}. {color}", color))
-        color_choice = input(colored("\nChoose color (1-8 or name): ", 'green'))
-        color = self.color_options[int(color_choice)-1] if color_choice.isdigit() else color_choice
-        
-        # Border selection
-        print(colored("\nBorder styles:", 'yellow'))
-        for i, (name, char) in enumerate(self.border_styles.items(), 1):
-            if name == 'box':
-                sample = "+-----+"
-            elif char:
-                sample = char * 5
-            else:
-                sample = "none"
-            print(f"{i}. {name} ({sample})")
-        
-        border_choice = input(colored("\nChoose border (1-9 or name): ", 'green'))
-        if border_choice.isdigit():
-            border = list(self.border_styles.keys())[int(border_choice)-1]
-        else:
-            border = border_choice
-        
-        # Additional options
-        width = int(input(colored("\nBanner width (default 80): ", 'green') or "80"))
-        timestamp = input(colored("Include timestamp? (y/n): ", 'green')).lower() == 'y'
-        author = None
-        if input(colored("Include author? (y/n): ", 'green')).lower() == 'y':
-            author = input(colored("Author name: ", 'green'))
-        
-        # Generate banner
-        banner = self.generate_banner(
-            text=text,
-            font=font,
-            color=color,
-            border=border,
-            width=width,
-            timestamp=timestamp,
-            author=author
-        )
-        
-        print(colored("\nGenerated Banner:\n", 'yellow'))
-        print(banner)
-        
-        # Output options
-        action = input(colored("\nChoose action:\n1. Save to file\n2. Inject into script\n3. Generate runtime function\n4. Just show\nChoice (1-4): ", 'green'))
-        
-        if action == '1':
-            filename = input(colored("Output filename: ", 'green'))
-            with open(filename, 'w') as f:
-                f.write(banner)
-            print(colored(f"Banner saved to {filename}", 'green'))
-        
-        elif action == '2':
-            target = input(colored("Target script path: ", 'green'))
-            lang = input(colored("Comment style (bash/python/c/html/none): ", 'green'))
-            position = input(colored("Insert position (top/after-shebang/before-end): ", 'green'))
-            
-            commented_banner = self.generate_commented_banner(banner, lang, width)
-            success = self.inject_into_script(
-                commented_banner,
-                target,
-                position,
-                True
-            )
-            if success:
-                print(colored(f"Successfully injected banner into {target}", 'green'))
-        
-        elif action == '3':
-            lang = input(colored("Language (bash/python): ", 'green'))
-            func = input(colored("Function name (default print_banner): ", 'green') or "print_banner")
-            
-            runtime_code = self.generate_runtime_function(banner, lang, func)
-            print(colored("\nRuntime function:\n", 'yellow'))
-            print(runtime_code)
-            
-            if input(colored("Save to file? (y/n): ", 'green')).lower() == 'y':
-                filename = input(colored("Filename: ", 'green'))
-                with open(filename, 'w') as f:
-                    f.write(runtime_code)
-                print(colored(f"Saved to {filename}", 'green'))
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     try:
         maker = EnhancedBannerMaker()
         maker.run()
     except KeyboardInterrupt:
-        print(colored("\nOperation cancelled by user.", 'red'))
+        print(colored('\nOperation cancelled by user.', 'red'))
         sys.exit(0)
     except Exception as e:
-        print(colored(f"\nError: {e}", 'red'))
+        print(colored(f'\nAn unexpected error occurred: {e}', 'red'))
         sys.exit(1)

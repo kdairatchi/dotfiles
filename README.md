@@ -57,32 +57,47 @@ A comprehensive, high-performance bug bounty and penetration testing framework w
 - **Custom Workflows**: Tailored scanning pipelines
 
 ## 📦 Installation
-- **One-command VPS deployment**:  
+
+### ⚡ Quick VPS Deployment (Recommended)
+**One-command installation** for fresh systems:
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/kdairatchi/dotfiles/main/install/vps-install.sh)
 ```
 
-Note: Always review scripts from external sources before executing them. You can first examine the script by running:
-
+> **Security Note:** Always review external scripts before execution:
 ```bash
 curl -s https://raw.githubusercontent.com/kdairatchi/dotfiles/main/install/vps-install.sh | less
 ```
-### Quick Installation (Recommended)
+
+### 🔧 Manual Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/dotfiles.git
+git clone https://github.com/kdairatchi/dotfiles.git
 cd dotfiles
 
 # Run enhanced setup with comprehensive error handling
 chmod +x install/enhanced_setup.sh
-./install/enhanced_setup.sh full
+./install/enhanced_setup.sh full    # Complete installation (recommended)
+./install/enhanced_setup.sh quick   # Essential tools only
 
-# Or quick setup for essentials only
-./install/enhanced_setup.sh quick
-
-# Validate installation and performance
+# Validate installation and optimize performance
 ./scripts/validate_deployment.sh
 ```
+
+### 🎨 Interactive Setup
+For guided installation with customization options:
+```bash
+./install/ultimate_setup.sh
+```
+
+### ⚙️ Configuration Options
+The setup process will:
+- Install 150+ security tools automatically
+- Configure shell environments (bash/zsh)
+- Set up 400+ useful aliases and functions
+- Optimize parallel processing (up to 9000 jobs)
+- Create symlinks for dotfiles
+- Configure development environments (Go, Python, Node.js)
 
 ### Manual Installation
 ```bash
@@ -446,19 +461,39 @@ This tool is intended for authorized security testing and educational purposes o
 - [SecLists](https://github.com/danielmiessler/SecLists) for comprehensive wordlists
 - Bug bounty community for continuous feedback and improvements
 
-## 📞 Support
-
-### Comprehensive Documentation
-- **📖 Usage Guide**: [docs/USAGE.md](docs/USAGE.md) - Detailed usage instructions and examples
+## 📞 Support & Documentation
+### 🚀 Documentation Links
+- **📖 Usage Guide**: [docs/USAGE.md](docs/USAGE.md) - Detailed usage instructions and workflows
+- **🎨 Customization Guide**: [docs/CUSTOMIZATION.md](docs/CUSTOMIZATION.md) - Complete customization options
+- **⚙️ Configuration Examples**: [docs/CONFIGURATION-EXAMPLES.md](docs/CONFIGURATION-EXAMPLES.md) - Ready-to-use configurations
 - **🔧 Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - **🛠️ Tools Reference**: [docs/TOOLS.md](docs/TOOLS.md) - Complete tool documentation
-- **📋 Validation**: `./scripts/validate_deployment.sh` - Comprehensive system testing
 
-### Getting Help
-- **🐛 Issues**: [GitHub Issues](https://github.com/your-repo/dotfiles/issues)
-- **📚 Wiki**: [GitHub Wiki](https://github.com/your-repo/dotfiles/wiki)
-- **💬 Community**: [Discord Server](https://discord.gg/your-server)
-- **📞 Logs**: Check `/tmp/enhanced_setup_*.log` for installation details
+### 🛠️ Built-in Help System
+```bash
+bbhelp                           # Show all available aliases and functions
+menu                             # Interactive tool selection menu
+./scripts/validate_deployment.sh # Validate installation and performance
+```
+
+### 🎯 Quick Configuration Commands
+```bash
+# View current configuration
+alias | grep -E '^(bb|recon|nuclei|httpx)'  # Show security aliases
+echo $J                                     # Show parallel job setting
+echo $PATH | tr ':' '\n' | grep -E '(go|tools)' # Show tool paths
+
+# Reconfigure quickly
+source ~/.shell_common                      # Reload shared settings
+./install/enhanced_setup.sh quick          # Quick reconfiguration
+```
+
+### 📞 Getting Help
+- **🐛 Issues**: [GitHub Issues](https://github.com/kdairatchi/dotfiles/issues)
+- **📚 Wiki**: [GitHub Wiki](https://github.com/kdairatchi/dotfiles/wiki)
+- **💬 Community**: Bug bounty community forums and Discord servers
+- **📝 Logs**: Check `/tmp/enhanced_setup_*.log` for installation details
+- **🔍 Validation**: Run `./scripts/validate_deployment.sh` for system diagnosis
 
 ---
 
